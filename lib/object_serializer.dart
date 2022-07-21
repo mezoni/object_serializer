@@ -127,6 +127,16 @@ class Deserializer {
     return _check(object);
   }
 
+  T readRaw<T>() {
+    final value = _getNext();
+    if (value is T) {
+      return value;
+    }
+
+    throw StateError(
+        'Unable to deserialize. Expected raw value of type $T, but got ${value.runtimeType}');
+  }
+
   Set<T> readSet<T>() {
     final offset = readRaw<int>();
     if (_isInCache(offset)) {
@@ -221,16 +231,6 @@ class Deserializer {
     final value = readObject<V>();
     final result = MapEntry(key, value);
     return result;
-  }
-
-  T readRaw<T>() {
-    final value = _getNext();
-    if (value is T) {
-      return value;
-    }
-
-    throw StateError(
-        'Unable to deserialize. Expected raw value of type $T, but got ${value.runtimeType}');
   }
 
   Set<T> _readSet<T>() {
@@ -339,8 +339,16 @@ abstract class ObjectSerializer<T> {
 class ObjectSerializerCollection {
   final List<ObjectSerializer> _serializerList = [];
 
+  final Map<Type, int> _types = {};
+
   void addSerializer<T>(ObjectSerializer<T> serializer) {
+    if (_types.containsKey(T)) {
+      throw ArgumentError('Serializer for type $T already exists');
+    }
+
+    final tag = _serializerList.length + _getStartTag();
     _serializerList.add(serializer);
+    _types[T] = tag;
   }
 
   int getKnownTypeTag(KnownType knownType) {
@@ -348,13 +356,22 @@ class ObjectSerializerCollection {
   }
 
   ObjectSerializer<T> getSerializer<T>(int tag) {
-    final index = tag - KnownType.values.length;
+    final index = tag - _getStartTag();
     if (index < 0 || index >= _serializerList.length) {
       throw StateError('Object serializer not found: $tag');
     }
 
     final result = _serializerList[index];
     return _cast(result);
+  }
+
+  int? getTag<T>() {
+    final result = tryGetTag<T>();
+    if (result != null) {
+      return result;
+    }
+
+    throw StateError('Object serializer for $T type not found');
   }
 
   int getTagFor(Object? object) {
@@ -373,6 +390,11 @@ class ObjectSerializerCollection {
     }
 
     final result = values[tag];
+    return result;
+  }
+
+  int? tryGetTag<T>() {
+    final result = _types[T];
     return result;
   }
 
@@ -395,6 +417,10 @@ class ObjectSerializerCollection {
 
     throw StateError(
         'Unable to cast ${serializer.runtimeType} to ObjectSerializer<$T>');
+  }
+
+  int _getStartTag() {
+    return KnownType.values.length;
   }
 }
 
@@ -503,7 +529,8 @@ class Serializer {
       return;
     }
 
-    final tag = _collection.tryGetTagFor(object);
+    var tag = _collection.tryGetTag<T>();
+    tag ??= _collection.tryGetTagFor(object);
     if (tag != null) {
       _writeTag(tag);
       final serializer = _collection.getSerializer<T>(tag);
@@ -526,6 +553,10 @@ class Serializer {
     }
 
     throw StateError('Object serializer not found: ${object.runtimeType}');
+  }
+
+  void writeRaw<T>(T? value) {
+    _stream.add(value);
   }
 
   void writeSet<T>(Set<T?> object) {
@@ -575,10 +606,6 @@ class Serializer {
     _writeTag(tag);
     writeObject(object.key);
     writeObject(object.value);
-  }
-
-  void writeRaw<T>(T? value) {
-    _stream.add(value);
   }
 
   bool _writeReference(Object? object) {
