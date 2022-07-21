@@ -2,7 +2,7 @@
 
 A serializer (with caching support) of any static (generic) complex data that can be represented as simpler data.
 
-Version: 0.1.1
+Version: 0.1.2
 
 Allows you to implement a serializer for any data that can be transferred between isolates or even over the Internet.  
 The principle of operation is very simple, for each data type you need to implement your own object serializer.  
