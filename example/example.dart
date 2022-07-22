@@ -1,149 +1,328 @@
-import 'dart:isolate';
+import 'dart:convert';
 
-import 'package:object_serializer/object_serializer.dart';
-import 'package:object_serializer/serialize.dart';
-import 'package:test/test.dart';
-import 'package:tuple/tuple.dart';
+import 'package:object_serializer/json_serializer.dart';
 
-Future<void> main() async {
-  test(
-    'Example',
-    () async {
-      final _ComplexType map = {
-        Uri.parse('package:animals'): [
-          Tuple2(BigInt.parse('1'), Tuple2(1, A('Hello'))),
-          Tuple2(BigInt.parse('2'), Tuple2(1, A('Hello'))),
-        ],
-        Uri.parse('package:zoo'): [
-          Tuple2(BigInt.parse('1'), Tuple2(1, B('Goodbye', 41))),
-          Tuple2(BigInt.parse('2'), Tuple2(2, null)),
-          Tuple2(BigInt.parse('1'), Tuple2(1, A('Hello'))),
-        ],
-      };
-
-      final stream = serializeMap(map, _collection);
-
-      //
-      final port = ReceivePort();
-      final isolate =
-          await Isolate.spawn<List>(compute, [port.sendPort, stream]);
-      final stream2 = await port.first as List;
-      isolate.kill(priority: Isolate.immediate);
-
-      //
-      final _ComplexType result = deserializeMap(stream2, _collection);
-      expect(result, map);
-    },
+void main(List<String> args) {
+  final price = BigInt.from(29.99);
+  final order = Order(
+    amount: price,
+    company: _company,
+    customer: _customer,
+    date: DateTime.now(),
+    lines: [
+      OrderLine(
+          product: _product,
+          price: price,
+          quantity: 25,
+          total: price * BigInt.from(25))
+    ],
   );
+
+  final orders = [order, order];
+  final jsonObject = serializeList(orders, _collection);
+  final jsonString = jsonEncode(jsonObject);
+  final jsonObject2 = jsonDecode(jsonString);
+  final orders2 = deserializeList<Order>(jsonObject2, _collection);
+  final jsonObject3 = serializeList(orders2, _collection);
+  final jsonString2 = jsonEncode(jsonObject3);
+  final result = jsonString == jsonString2;
+  print(jsonString2);
+  print('Test passed: $result');
 }
 
-final _collection = ObjectSerializerCollection()
-  ..addSerializer(ListSerializer<Tuple2<BigInt, Tuple2<int, Base?>>>())
-  ..addSerializer(_ASerializer())
-  ..addSerializer(_BSerializer())
+final _collection = JsonSerializerCollection()
   ..addSerializer(_BigIntSerializer())
-  ..addSerializer(_Tuple2Serializer<BigInt, Tuple2<int, Base?>>())
-  ..addSerializer(_Tuple2Serializer<int, Base?>())
+  ..addSerializer(_CompanySerializer())
+  ..addSerializer(_CustomerLevelSerializer())
+  ..addSerializer(_CustomerSerializer())
+  ..addSerializer(_DateTimeSerializer())
+  ..addSerializer(_DurationSerializer())
+  ..addSerializer(_OrderLineSerializer())
+  ..addSerializer(_OrderSerializer())
+  ..addSerializer(_ProductSerializer())
   ..addSerializer(_UriSerializer());
 
-void compute(List args) {
-  final sendPort = args[0] as SendPort;
-  final input = args[1] as List;
-  final _ComplexType map = deserializeMap(input, _collection);
-  final output = serializeMap(map, _collection);
-  sendPort.send(output);
+final _company = Company(
+  name: 'ACME Inc.',
+  website: Uri.parse('https://acme.com'),
+);
+
+final _customer = Customer(
+  age: null,
+  birthday: null,
+  frequency: Duration(days: 10),
+  level: CustomerLevel.wholesale,
+  name: 'Peter Pan',
+);
+
+final _product = Product(
+  name: 'The Little White Bird',
+  price: BigInt.from(49.99),
+  priceRange: {
+    '3': 49.99,
+    '10': 39.99,
+    '25': 29.99,
+  },
+);
+
+class Company {
+  final String name;
+
+  final Uri website;
+
+  Company({
+    required this.name,
+    required this.website,
+  });
 }
 
-typedef _ComplexType = Map<Uri, List<Tuple2<BigInt, Tuple2<int, Base?>>>>;
+class Customer {
+  final int? age;
 
-class A extends Base {
-  A(super.base);
+  final DateTime? birthday;
+
+  final Duration frequency;
+
+  final CustomerLevel level;
+
+  final String name;
+
+  Customer({
+    required this.age,
+    required this.birthday,
+    required this.frequency,
+    required this.level,
+    required this.name,
+  });
+}
+
+enum CustomerLevel { retail, wholesale }
+
+class Order {
+  final BigInt amount;
+
+  final Company company;
+
+  final Customer customer;
+
+  final DateTime date;
+
+  final List<OrderLine> lines;
+
+  Order({
+    required this.amount,
+    required this.company,
+    required this.customer,
+    required this.date,
+    required this.lines,
+  });
+}
+
+class OrderLine {
+  final Product product;
+
+  final BigInt price;
+
+  final int quantity;
+
+  final BigInt total;
+
+  OrderLine({
+    required this.product,
+    required this.price,
+    required this.quantity,
+    required this.total,
+  });
+}
+
+class Product {
+  final String name;
+
+  final BigInt price;
+
+  final Map<String, double> priceRange;
+
+  Product({
+    required this.name,
+    required this.price,
+    required this.priceRange,
+  });
+}
+
+class _BigIntSerializer extends JsonSerializer<BigInt> {
+  @override
+  BigInt deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return BigInt.parse(json);
+  }
 
   @override
-  bool operator ==(other) => other is A && other.base == base;
+  String serialize(Serializer serializer, BigInt value) {
+    return value.toString();
+  }
 }
 
-class B extends Base {
-  final int x;
-
-  B(super.base, this.x);
-
+class _CompanySerializer extends JsonSerializer<Company> {
   @override
-  bool operator ==(other) => other is B && other.base == base && other.x == x;
-}
-
-class Base {
-  final String base;
-
-  Base(this.base);
-}
-
-class _ASerializer extends ObjectSerializer<A> {
-  @override
-  A deserialize(Deserializer deserializer) {
-    return A(
-      deserializer.readObject(),
+  Company deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Company(
+      name: deserializer.deserialize(json['name']),
+      website: deserializer.deserialize(json['website']),
     );
   }
 
   @override
-  void serialize(Serializer serializer, A object) {
-    serializer.writeObject(object.base);
+  Map<String, dynamic> serialize(Serializer serializer, Company value) {
+    return {
+      'name': serializer.serialize(value.name),
+      'website': serializer.serialize(value.website),
+    };
   }
 }
 
-class _BigIntSerializer extends ObjectSerializer<BigInt> {
+class _CustomerLevelSerializer extends JsonSerializer<CustomerLevel> {
   @override
-  BigInt deserialize(Deserializer deserializer) {
-    return BigInt.parse(deserializer.readObject());
+  CustomerLevel deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<int>(value);
+    return CustomerLevel.values[json];
   }
 
   @override
-  void serialize(Serializer serializer, BigInt object) {
-    serializer.writeObject('$object');
+  int serialize(Serializer serializer, CustomerLevel value) {
+    return value.index;
   }
 }
 
-class _BSerializer extends ObjectSerializer<B> {
+class _CustomerSerializer extends JsonSerializer<Customer> {
   @override
-  B deserialize(Deserializer deserializer) {
-    return B(
-      deserializer.readObject(),
-      deserializer.readObject(),
+  Customer deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Customer(
+      birthday: deserializer.deserialize(json['birthday']),
+      age: deserializer.deserialize(json['age']),
+      frequency: deserializer.deserialize(json['frequency']),
+      level: deserializer.deserialize(json['level']),
+      name: deserializer.deserialize(json['name']),
     );
   }
 
   @override
-  void serialize(Serializer serializer, B object) {
-    serializer.writeObject(object.base);
-    serializer.writeObject(object.x);
+  Map<String, dynamic> serialize(Serializer serializer, Customer value) {
+    return {
+      'age': serializer.serialize(value.age),
+      'birthday': serializer.serialize(value.birthday),
+      'frequency': serializer.serialize(value.frequency),
+      'level': serializer.serialize(value.level),
+      'name': serializer.serialize(value.name),
+    };
   }
 }
 
-class _Tuple2Serializer<T1, T2> extends ObjectSerializer<Tuple2<T1, T2>> {
+class _DateTimeSerializer extends JsonSerializer<DateTime> {
   @override
-  Tuple2<T1, T2> deserialize(Deserializer deserializer) {
-    return Tuple2(
-      deserializer.readObject(),
-      deserializer.readObject(),
+  DateTime deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
+  }
+
+  @override
+  String serialize(Serializer serializer, DateTime value) {
+    return value.microsecondsSinceEpoch.toString();
+  }
+}
+
+class _DurationSerializer extends JsonSerializer<Duration> {
+  @override
+  Duration deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return Duration(microseconds: int.parse(json));
+  }
+
+  @override
+  String serialize(Serializer serializer, Duration value) {
+    return value.inMicroseconds.toString();
+  }
+}
+
+class _OrderLineSerializer extends JsonSerializer<OrderLine> {
+  @override
+  OrderLine deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return OrderLine(
+      price: deserializer.deserialize(json['price']),
+      product: deserializer.deserialize(json['product']),
+      quantity: deserializer.deserialize(json['quantity']),
+      total: deserializer.deserialize(json['total']),
     );
   }
 
   @override
-  void serialize(Serializer serializer, Tuple2<T1, T2> object) {
-    serializer.writeObject(object.item1);
-    serializer.writeObject(object.item2);
+  Map<String, dynamic> serialize(Serializer serializer, OrderLine value) {
+    return {
+      'price': serializer.serialize(value.price),
+      'product': serializer.serialize(value.product),
+      'quantity': serializer.serialize(value.quantity),
+      'total': serializer.serialize(value.total),
+    };
   }
 }
 
-class _UriSerializer extends ObjectSerializer<Uri> {
+class _OrderSerializer extends JsonSerializer<Order> {
   @override
-  Uri deserialize(Deserializer deserializer) {
-    return Uri.parse(deserializer.readObject());
+  Order deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Order(
+      amount: deserializer.deserialize(json['amount']),
+      company: deserializer.deserialize(json['company']),
+      customer: deserializer.deserialize(json['customer']),
+      date: deserializer.deserialize(json['date']),
+      lines: deserializer.deserializeList(json['lines']),
+    );
   }
 
   @override
-  void serialize(Serializer serializer, Uri object) {
-    serializer.writeObject(object.toString());
+  Map<String, dynamic> serialize(Serializer serializer, Order value) {
+    return {
+      'amount': serializer.serialize(value.amount),
+      'company': serializer.serialize(value.company),
+      'customer': serializer.serialize(value.customer),
+      'date': serializer.serialize(value.date),
+      'lines': serializer.serializeList(value.lines),
+    };
+  }
+}
+
+class _ProductSerializer extends JsonSerializer<Product> {
+  @override
+  Product deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Product(
+      name: deserializer.deserialize(json['name']),
+      price: deserializer.deserialize(json['price']),
+      priceRange: deserializer.deserializeMap(json['priceRange']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> serialize(Serializer serializer, Product value) {
+    return {
+      'name': serializer.serialize(value.name),
+      'price': serializer.serialize(value.price),
+      'priceRange': serializer.serializeMap(value.priceRange),
+    };
+  }
+}
+
+class _UriSerializer extends JsonSerializer<Uri> {
+  @override
+  Uri deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return Uri.parse(json);
+  }
+
+  @override
+  String serialize(Serializer serializer, Uri value) {
+    return value.toString();
   }
 }

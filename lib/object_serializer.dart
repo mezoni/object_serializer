@@ -156,7 +156,7 @@ class Deserializer {
     }
 
     throw StateError(
-        'Unable to deserialize. Expected raw value of type $T, but got ${object.runtimeType}');
+        'Unable to deserialize. Expected value of type $T, but got ${object.runtimeType}');
   }
 
   void _checkEos() {
@@ -176,7 +176,7 @@ class Deserializer {
     final result = _readTag();
     if (tag != result) {
       throw StateError(
-          'Unable to deserialize. Expected tag: $tag but got $result');
+          'Unable to deserialize. Expected tag $tag but got $result');
     }
   }
 
@@ -434,10 +434,6 @@ class Serializer {
   Serializer({
     required ObjectSerializerCollection collection,
   }) : _collection = collection;
-
-  T deserialize<T>() {
-    throw UnimplementedError();
-  }
 
   List serialize<T>(T object) {
     _reset();

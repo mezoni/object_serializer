@@ -11,6 +11,18 @@
             "type": "dart",
             "request": "launch",
             "program": "example\\example.dart"
+        },
+        {
+            "name": "Dart (example\\example_generate.dart)",
+            "type": "dart",
+            "request": "launch",
+            "program": "example\\example_generate.dart"
+        },
+        {
+            "name": "Dart (example\\example_json.dart)",
+            "type": "dart",
+            "request": "launch",
+            "program": "example\\example_json.dart"
         }
     ]
 }
