@@ -23,6 +23,12 @@
             "type": "dart",
             "request": "launch",
             "program": "example\\example_json.dart"
+        },
+        {
+            "name": "example_generate_example.dart",
+            "type": "dart",
+            "request": "launch",
+            "program": "example/example_generate_example.dart"
         }
     ]
 }
