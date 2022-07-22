@@ -66,9 +66,9 @@ class Deserializer {
       return _cast(value);
     } else {
       {
-        final serializer = _collection.tryGetSerializer<T>();
-        if (serializer != null) {
-          final result = serializer.deserialize(this, value);
+        final serializer1 = _collection.tryGetSerializer<T>();
+        if (serializer1 != null) {
+          final result = serializer1.deserialize(this, value);
           return result;
         }
 
