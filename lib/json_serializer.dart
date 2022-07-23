@@ -55,9 +55,9 @@ Map<String, T> deserializeMap<T>(
   return result;
 }
 
-Object? serialize<T>(Object? value, JsonSerializerCollection collection) {
+Object? serialize<T>(T value, JsonSerializerCollection collection) {
   final serializer = Serializer(collection: collection);
-  final result = serializer.serialize(value);
+  final result = serializer.serialize<T>(value);
   return result;
 }
 

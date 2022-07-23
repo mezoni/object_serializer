@@ -8,7 +8,10 @@ class SimpleJsonSerializerGenerator {
     return result;
   }
 
-  String generateClasses(Map classes) {
+  String generateClasses(
+    Map classes, {
+    void Function(ClassBuilder builder, Map classData)? build,
+  }) {
     final library = Library((lib) {
       for (final key in classes.keys) {
         final class_ = Class((b) {
@@ -37,6 +40,10 @@ class SimpleJsonSerializerGenerator {
               }));
             }
           }));
+
+          if (build != null) {
+            build(b, classData);
+          }
         });
 
         lib.body.add(class_);
@@ -176,6 +183,7 @@ class SimpleJsonSerializerGenerator {
               final alias =
                   (_tryGetValue<String>(fieldData, 'alias') ?? fieldName)
                       .trim();
+              final defaultValue = _tryGetValue(fieldData, 'defaultValue');
               var collection = '';
               if (type.startsWith('List<')) {
                 collection = 'List';
@@ -183,8 +191,13 @@ class SimpleJsonSerializerGenerator {
                 collection = 'Map';
               }
 
+              var defaultValueCode = '';
+              if (defaultValue != null) {
+                defaultValueCode = ' ?? $defaultValue';
+              }
+
               code.add(
-                  "$fieldName: deserializer.deserialize$collection(json['$alias']),");
+                  "$fieldName: deserializer.deserialize$collection(json['$alias']$defaultValueCode),");
             }
 
             code.add(');');

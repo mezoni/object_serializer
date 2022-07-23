@@ -1,3 +1,8 @@
+# 0.1.7
+
+- Fixed bug in helper function `serialize`
+- Added the ability to specify default values for fields
+
 # 0.1.6
 
 - Added small code fix
