@@ -1,4 +1,10 @@
+# 0.1.5
+
+- Improved simple code generator `SimpleJsonSerializerGenerator`
+- Improved  an example of using the code generator `SimpleJsonSerializerGenerator`
+
 # 0.1.4
+
 - Added simple code generator `SimpleJsonSerializerGenerator`
 - Added an example of using the code generator `SimpleJsonSerializerGenerator`
 

@@ -16,21 +16,41 @@ final _primitiveTypes = () {
   return result;
 }();
 
-T deserialize<T>(Object? value, JsonSerializerCollection collection) {
-  final deserializer = Deserializer(collection: collection);
+T deserialize<T>(
+  Object? value,
+  JsonSerializerCollection collection, {
+  bool isNullable = true,
+}) {
+  final deserializer = Deserializer(
+    collection: collection,
+    isNullable: isNullable,
+  );
   final result = deserializer.deserialize<T>(value);
   return result;
 }
 
-List<T> deserializeList<T>(Object? value, JsonSerializerCollection collection) {
-  final deserializer = Deserializer(collection: collection);
+List<T> deserializeList<T>(
+  Object? value,
+  JsonSerializerCollection collection, {
+  bool isNullable = true,
+}) {
+  final deserializer = Deserializer(
+    collection: collection,
+    isNullable: isNullable,
+  );
   final result = deserializer.deserializeList<T>(value);
   return result;
 }
 
 Map<String, T> deserializeMap<T>(
-    Object? value, JsonSerializerCollection collection) {
-  final deserializer = Deserializer(collection: collection);
+  Object? value,
+  JsonSerializerCollection collection, {
+  bool isNullable = true,
+}) {
+  final deserializer = Deserializer(
+    collection: collection,
+    isNullable: isNullable,
+  );
   final result = deserializer.deserializeMap<T>(value);
   return result;
 }
@@ -56,10 +76,13 @@ Map serializeMap<T>(Map<String, T> value, JsonSerializerCollection collection) {
 class Deserializer {
   final JsonSerializerCollection _collection;
 
+  final bool _isNullable;
+
   Deserializer({
     required JsonSerializerCollection collection,
-    bool debug = false,
-  }) : _collection = collection;
+    bool isNullable = true,
+  })  : _collection = collection,
+        _isNullable = isNullable;
 
   T deserialize<T>(Object? value) {
     if (_primitiveTypes.contains(T)) {
@@ -94,6 +117,10 @@ class Deserializer {
       serializer = _collection.getSerializer<T>();
     }
 
+    if (value == null && !_isNullable) {
+      return [];
+    }
+
     final list = _cast<List>(value);
     final result = <T>[];
     for (var i = 0; i < list.length; i++) {
@@ -113,6 +140,10 @@ class Deserializer {
     JsonSerializer<T>? serializer;
     if (!_primitiveTypes.contains(T)) {
       serializer = _collection.getSerializer<T>();
+    }
+
+    if (value == null && !_isNullable) {
+      return <String, T>{};
     }
 
     final map = _cast<Map>(value);
@@ -136,6 +167,21 @@ class Deserializer {
   T _cast<T>(Object? value) {
     if (value is T) {
       return value;
+    }
+
+    if (value == null && !_isNullable) {
+      const defaultValues = {
+        bool: false,
+        double: 0.0,
+        int: 0,
+        num: 0,
+        String: '',
+      };
+
+      final defaultValue = defaultValues[T];
+      if (defaultValue is T) {
+        return defaultValue;
+      }
     }
 
     _error(throw StateError(
@@ -284,7 +330,6 @@ class Serializer {
 
   Serializer({
     required JsonSerializerCollection collection,
-    bool debug = false,
   }) : _collection = collection;
 
   Object? serialize<T>(T value) {
