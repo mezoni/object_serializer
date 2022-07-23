@@ -2,7 +2,7 @@
 
 A collection of serializers for serializing data in a variety of ways (JSON, Generic Objects).
 
-Version: 0.1.6
+Version: 0.1.8
 
 Two kinds of data serializers are currently available:  
 - JSON serializer
@@ -17,284 +17,137 @@ The principle of operation is very simple, for each data type you need to implem
 
 Implementing an object serializer is also very simple. To do this, you need to write the data in a `strict order` and then read this data in `the same order`.
 
-## JSON
+## JSON serializer
 
-Let's say that we need to use this data objects.
+`JSON serializer` is a serializer to standard JSON format.  
+Let's say that we need to use this data objects to exchange data in JSON format.
 
-```dart
-class Company {
-  final String name;
+```yaml
+Company:
+  name: String
+  website: Uri
 
-  final Uri website;
+Customer:
+  age: int?
+  birthday: DateTime?
+  frequency: Duration
+  level: {type: CustomerLevel, alias: customer_level}
+  name: String
 
-  Company({
-    required this.name,
-    required this.website,
-  });
-}
+Order:
+  amount: BigInt
+  company: Company
+  customer: Customer
+  date: DateTime
+  lines: List<OrderLine>
 
-class Customer {
-  final int? age;
+OrderLine:
+  product: Product
+  price: BigInt
+  quantity: int
+  total: BigInt
 
-  final DateTime? birthday;
-
-  final Duration frequency;
-
-  final CustomerLevel level;
-
-  final String name;
-
-  Customer({
-    required this.age,
-    required this.birthday,
-    required this.frequency,
-    required this.level,
-    required this.name,
-  });
-}
-
-enum CustomerLevel { retail, wholesale }
-
-class Order {
-  final BigInt amount;
-
-  final Company company;
-
-  final Customer customer;
-
-  final DateTime date;
-
-  final List<OrderLine> lines;
-
-  Order({
-    required this.amount,
-    required this.company,
-    required this.customer,
-    required this.date,
-    required this.lines,
-  });
-}
-
-class OrderLine {
-  final Product product;
-
-  final BigInt price;
-
-  final int quantity;
-
-  final BigInt total;
-
-  OrderLine({
-    required this.product,
-    required this.price,
-    required this.quantity,
-    required this.total,
-  });
-}
-
-class Product {
-  final String name;
-
-  final BigInt price;
-
-  final Map<String, double> priceRange;
-
-  Product({
-    required this.name,
-    required this.price,
-    required this.priceRange,
-  });
-}
+Product:
+  name: String
+  price: BigInt
+  priceRange: Map<String, double>
 ```
 
-How to implement serializers for these data types in less than 30 minutes?  
-Let's try to do this.
+Enums:
 
-```dart
-class _BigIntSerializer extends JsonSerializer<BigInt> {
-  @override
-  BigInt deserialize(Deserializer deserializer, Object? value) {
+```yaml
+CustomerLevel:
+  retail:
+  wholesale: "'wholesaler'"
+```
+
+And other serializers for the types we use in our classes.  
+With the source code of algorithms for serialization.
+
+```yaml
+_BigIntSerializer:
+  type: BigInt
+  deserialize: |-
     final json = cast<String>(value);
     return BigInt.parse(json);
-  }
-
-  @override
-  String serialize(Serializer serializer, BigInt value) {
+  serialize: |-
     return value.toString();
-  }
-}
+  serializeReturns: String
 
-class _CompanySerializer extends JsonSerializer<Company> {
-  @override
-  Company deserialize(Deserializer deserializer, Object? value) {
-    final json = cast<Map>(value);
-    return Company(
-      name: deserializer.deserialize(json['name']),
-      website: deserializer.deserialize(json['website']),
-    );
-  }
-
-  @override
-  Map<String, dynamic> serialize(Serializer serializer, Company value) {
-    return {
-      'name': serializer.serialize(value.name),
-      'website': serializer.serialize(value.website),
-    };
-  }
-}
-
-class _CustomerLevelSerializer extends JsonSerializer<CustomerLevel> {
-  @override
-  CustomerLevel deserialize(Deserializer deserializer, Object? value) {
-    final json = cast<int>(value);
-    return CustomerLevel.values[json];
-  }
-
-  @override
-  int serialize(Serializer serializer, CustomerLevel value) {
-    return value.index;
-  }
-}
-
-class _CustomerSerializer extends JsonSerializer<Customer> {
-  @override
-  Customer deserialize(Deserializer deserializer, Object? value) {
-    final json = cast<Map>(value);
-    return Customer(
-      birthday: deserializer.deserialize(json['birthday']),
-      age: deserializer.deserialize(json['age']),
-      frequency: deserializer.deserialize(json['frequency']),
-      level: deserializer.deserialize(json['level']),
-      name: deserializer.deserialize(json['name']),
-    );
-  }
-
-  @override
-  Map<String, dynamic> serialize(Serializer serializer, Customer value) {
-    return {
-      'age': serializer.serialize(value.age),
-      'birthday': serializer.serialize(value.birthday),
-      'frequency': serializer.serialize(value.frequency),
-      'level': serializer.serialize(value.level),
-      'name': serializer.serialize(value.name),
-    };
-  }
-}
-
-class _DateTimeSerializer extends JsonSerializer<DateTime> {
-  @override
-  DateTime deserialize(Deserializer deserializer, Object? value) {
+_DateTimeSerializer:
+  type: DateTime
+  deserialize: |-
     final json = cast<String>(value);
     return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
-  }
-
-  @override
-  String serialize(Serializer serializer, DateTime value) {
+  serialize: |-
     return value.microsecondsSinceEpoch.toString();
-  }
-}
+  serializeReturns: String
 
-class _DurationSerializer extends JsonSerializer<Duration> {
-  @override
-  Duration deserialize(Deserializer deserializer, Object? value) {
+_DurationSerializerSerializer:
+  type: Duration
+  deserialize: |-
     final json = cast<String>(value);
     return Duration(microseconds: int.parse(json));
-  }
-
-  @override
-  String serialize(Serializer serializer, Duration value) {
+  serialize: |-
     return value.inMicroseconds.toString();
-  }
-}
+  serializeReturns: String
 
-class _OrderLineSerializer extends JsonSerializer<OrderLine> {
-  @override
-  OrderLine deserialize(Deserializer deserializer, Object? value) {
-    final json = cast<Map>(value);
-    return OrderLine(
-      price: deserializer.deserialize(json['price']),
-      product: deserializer.deserialize(json['product']),
-      quantity: deserializer.deserialize(json['quantity']),
-      total: deserializer.deserialize(json['total']),
-    );
-  }
-
-  @override
-  Map<String, dynamic> serialize(Serializer serializer, OrderLine value) {
-    return {
-      'price': serializer.serialize(value.price),
-      'product': serializer.serialize(value.product),
-      'quantity': serializer.serialize(value.quantity),
-      'total': serializer.serialize(value.total),
-    };
-  }
-}
-
-class _OrderSerializer extends JsonSerializer<Order> {
-  @override
-  Order deserialize(Deserializer deserializer, Object? value) {
-    final json = cast<Map>(value);
-    return Order(
-      amount: deserializer.deserialize(json['amount']),
-      company: deserializer.deserialize(json['company']),
-      customer: deserializer.deserialize(json['customer']),
-      date: deserializer.deserialize(json['date']),
-      lines: deserializer.deserializeList(json['lines']),
-    );
-  }
-
-  @override
-  Map<String, dynamic> serialize(Serializer serializer, Order value) {
-    return {
-      'amount': serializer.serialize(value.amount),
-      'company': serializer.serialize(value.company),
-      'customer': serializer.serialize(value.customer),
-      'date': serializer.serialize(value.date),
-      'lines': serializer.serializeList(value.lines),
-    };
-  }
-}
-
-class _ProductSerializer extends JsonSerializer<Product> {
-  @override
-  Product deserialize(Deserializer deserializer, Object? value) {
-    final json = cast<Map>(value);
-    return Product(
-      name: deserializer.deserialize(json['name']),
-      price: deserializer.deserialize(json['price']),
-      priceRange: deserializer.deserializeMap(json['priceRange']),
-    );
-  }
-
-  @override
-  Map<String, dynamic> serialize(Serializer serializer, Product value) {
-    return {
-      'name': serializer.serialize(value.name),
-      'price': serializer.serialize(value.price),
-      'priceRange': serializer.serializeMap(value.priceRange),
-    };
-  }
-}
-
-class _UriSerializer extends JsonSerializer<Uri> {
-  @override
-  Uri deserialize(Deserializer deserializer, Object? value) {
+_UriSerializer:
+  type: Uri
+  deserialize: |-
     final json = cast<String>(value);
     return Uri.parse(json);
+  serialize: |-
+    return value.toString();
+  serializeReturns: String
+```
+
+Now let's try to generate the code.  
+We will use a generator for this.
+
+```dart
+import 'dart:io';
+
+import 'package:object_serializer/simple_json_serializer_generator.dart';
+import 'package:yaml/yaml.dart';
+
+void main() {
+  String generateName(String name) {
+    return '_${name}Serializer';
   }
 
-  @override
-  String serialize(Serializer serializer, Uri value) {
-    return value.toString();
-  }
+  final classes = loadYaml(_classes) as Map;
+  final g = SimpleJsonSerializerGenerator();
+  final classesCode = g.generateClasses(classes);
+  final enums = loadYaml(_enums) as Map;
+  final enumCode = g.generateEnums(enums);
+  final serializers = loadYaml(_serializers) as Map;
+  final serializersCode = g.generateSerializers(serializers);
+  final collectionCode = g.generateSerializerCollection('_collection', [
+    ...classes.keys.map((e) => generateName('$e')),
+    ...enums.keys.map((e) => generateName('$e')),
+    ...serializers.keys.cast(),
+  ]);
+  final enumSerializersCode =
+      g.generateSerializersForEnums(enums, generateName);
+  final classSerializersCode =
+      g.generateSerializersForClasses(classes, generateName);
+  final values = {
+    'classes': classesCode,
+    'classSerializers': classSerializersCode,
+    'enumSerializers': enumSerializersCode,
+    'collection': collectionCode,
+    'enums': enumCode,
+    'serializers': serializersCode,
+  };
+
+  var source = _render(_template, values);
+  source = g.format(source);
+  File('example/example.dart').writeAsStringSync(source);
 }
 ```
 
-About 180 lines of code.   
-Not much, given that you have complete control over what and how to serialize.
-
-Let's see the result of this work in action.  
-The simplest test:
+Generated source code:
 
 ```dart
 import 'dart:convert';
@@ -335,7 +188,7 @@ final _collection = JsonSerializerCollection()
   ..addSerializer(_CustomerLevelSerializer())
   ..addSerializer(_CustomerSerializer())
   ..addSerializer(_DateTimeSerializer())
-  ..addSerializer(_DurationSerializer())
+  ..addSerializer(_DurationSerializerSerializer())
   ..addSerializer(_OrderLineSerializer())
   ..addSerializer(_OrderSerializer())
   ..addSerializer(_ProductSerializer())
@@ -363,15 +216,270 @@ final _product = Product(
     '25': 29.99,
   },
 );
+
+class Company {
+  Company({required this.name, required this.website});
+
+  final String name;
+
+  final Uri website;
+}
+
+class Customer {
+  Customer(
+      {required this.age,
+      required this.birthday,
+      required this.frequency,
+      required this.level,
+      required this.name});
+
+  final int? age;
+
+  final DateTime? birthday;
+
+  final Duration frequency;
+
+  final CustomerLevel level;
+
+  final String name;
+}
+
+class Order {
+  Order(
+      {required this.amount,
+      required this.company,
+      required this.customer,
+      required this.date,
+      required this.lines});
+
+  final BigInt amount;
+
+  final Company company;
+
+  final Customer customer;
+
+  final DateTime date;
+
+  final List<OrderLine> lines;
+}
+
+class OrderLine {
+  OrderLine(
+      {required this.product,
+      required this.price,
+      required this.quantity,
+      required this.total});
+
+  final Product product;
+
+  final BigInt price;
+
+  final int quantity;
+
+  final BigInt total;
+}
+
+class Product {
+  Product({required this.name, required this.price, required this.priceRange});
+
+  final String name;
+
+  final BigInt price;
+
+  final Map<String, double> priceRange;
+}
+
+enum CustomerLevel { retail, wholesale }
+
+class _CompanySerializer extends JsonSerializer<Company> {
+  @override
+  Company deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Company(
+      name: deserializer.deserialize(json['name']),
+      website: deserializer.deserialize(json['website']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> serialize(Serializer serializer, Company value) {
+    return {
+      'name': serializer.serialize(value.name),
+      'website': serializer.serialize(value.website),
+    };
+  }
+}
+
+class _CustomerSerializer extends JsonSerializer<Customer> {
+  @override
+  Customer deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Customer(
+      age: deserializer.deserialize(json['age']),
+      birthday: deserializer.deserialize(json['birthday']),
+      frequency: deserializer.deserialize(json['frequency']),
+      level: deserializer.deserialize(json['customer_level']),
+      name: deserializer.deserialize(json['name']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> serialize(Serializer serializer, Customer value) {
+    return {
+      'age': serializer.serialize(value.age),
+      'birthday': serializer.serialize(value.birthday),
+      'frequency': serializer.serialize(value.frequency),
+      'customer_level': serializer.serialize(value.level),
+      'name': serializer.serialize(value.name),
+    };
+  }
+}
+
+class _OrderSerializer extends JsonSerializer<Order> {
+  @override
+  Order deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Order(
+      amount: deserializer.deserialize(json['amount']),
+      company: deserializer.deserialize(json['company']),
+      customer: deserializer.deserialize(json['customer']),
+      date: deserializer.deserialize(json['date']),
+      lines: deserializer.deserializeList(json['lines']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> serialize(Serializer serializer, Order value) {
+    return {
+      'amount': serializer.serialize(value.amount),
+      'company': serializer.serialize(value.company),
+      'customer': serializer.serialize(value.customer),
+      'date': serializer.serialize(value.date),
+      'lines': serializer.serializeList(value.lines),
+    };
+  }
+}
+
+class _OrderLineSerializer extends JsonSerializer<OrderLine> {
+  @override
+  OrderLine deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return OrderLine(
+      product: deserializer.deserialize(json['product']),
+      price: deserializer.deserialize(json['price']),
+      quantity: deserializer.deserialize(json['quantity']),
+      total: deserializer.deserialize(json['total']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> serialize(Serializer serializer, OrderLine value) {
+    return {
+      'product': serializer.serialize(value.product),
+      'price': serializer.serialize(value.price),
+      'quantity': serializer.serialize(value.quantity),
+      'total': serializer.serialize(value.total),
+    };
+  }
+}
+
+class _ProductSerializer extends JsonSerializer<Product> {
+  @override
+  Product deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<Map>(value);
+    return Product(
+      name: deserializer.deserialize(json['name']),
+      price: deserializer.deserialize(json['price']),
+      priceRange: deserializer.deserializeMap(json['priceRange']),
+    );
+  }
+
+  @override
+  Map<String, dynamic> serialize(Serializer serializer, Product value) {
+    return {
+      'name': serializer.serialize(value.name),
+      'price': serializer.serialize(value.price),
+      'priceRange': serializer.serializeMap(value.priceRange),
+    };
+  }
+}
+
+class _CustomerLevelSerializer extends JsonSerializer<CustomerLevel> {
+  @override
+  CustomerLevel deserialize(Deserializer deserializer, Object? value) {
+    const map = {0: 0, 'wholesaler': 1};
+    final index = map[value] as int;
+    return CustomerLevel.values[index];
+  }
+
+  @override
+  Object? serialize(Serializer serializer, CustomerLevel value) {
+    const map = {0: 0, 1: 'wholesaler'};
+    return map[value.index];
+  }
+}
+
+class _BigIntSerializer extends JsonSerializer<BigInt> {
+  @override
+  BigInt deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return BigInt.parse(json);
+  }
+
+  @override
+  String serialize(Serializer serializer, BigInt value) {
+    return value.toString();
+  }
+}
+
+class _DateTimeSerializer extends JsonSerializer<DateTime> {
+  @override
+  DateTime deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
+  }
+
+  @override
+  String serialize(Serializer serializer, DateTime value) {
+    return value.microsecondsSinceEpoch.toString();
+  }
+}
+
+class _DurationSerializerSerializer extends JsonSerializer<Duration> {
+  @override
+  Duration deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return Duration(microseconds: int.parse(json));
+  }
+
+  @override
+  String serialize(Serializer serializer, Duration value) {
+    return value.inMicroseconds.toString();
+  }
+}
+
+class _UriSerializer extends JsonSerializer<Uri> {
+  @override
+  Uri deserialize(Deserializer deserializer, Object? value) {
+    final json = cast<String>(value);
+    return Uri.parse(json);
+  }
+
+  @override
+  String serialize(Serializer serializer, Uri value) {
+    return value.toString();
+  }
+}
 ```
 
-Result pf work:
+The result of executing the generated code:
 
-[{"amount":"29","company":{"name":"ACME Inc.","website":"https://acme.com"},"customer":{"age":null,"birthday":null,"frequency":"864000000000","level":1,"name":"Peter Pan"},"date":"1658504965053872","lines":[{"price":"29","product":{"name":"The Little White Bird","price":"49","priceRange":{"3":49.99,"10":39.99,"25":29.99}},"quantity":25,"total":"725"}]},{"amount":"29","company":{"name":"ACME Inc.","website":"https://acme.com"},"customer":{"age":null,"birthday":null,"frequency":"864000000000","level":1,"name":"Peter Pan"},"date":"1658504965053872","lines":[{"price":"29","product":{"name":"The Little White Bird","price":"49","priceRange":{"3":49.99,"10":39.99,"25":29.99}},"quantity":25,"total":"725"}]}]
+[{"amount":"29","company":{"name":"ACME Inc.","website":"https://acme.com"},"customer":{"age":null,"birthday":null,"frequency":"864000000000","customer_level":"wholesaler","name":"Peter Pan"},"date":"1658584432439365","lines":[{"product":{"name":"The Little White Bird","price":"49","priceRange":{"3":49.99,"10":39.99,"25":29.99}},"price":"29","quantity":25,"total":"725"}]},{"amount":"29","company":{"name":"ACME Inc.","website":"https://acme.com"},"customer":{"age":null,"birthday":null,"frequency":"864000000000","customer_level":"wholesaler","name":"Peter Pan"},"date":"1658584432439365","lines":[{"product":{"name":"The Little White Bird","price":"49","priceRange":{"3":49.99,"10":39.99,"25":29.99}},"price":"29","quantity":25,"total":"725"}]}]
 Test passed: true
 
 ## Object serializer
 
+`Object serializer` is a serializer (with caching support) of any static (generic) complex data that can be represented as simpler data.  
 Example of simple object serializer:
 
 ```dart
@@ -600,4 +708,3 @@ For simpler or non-generic data, fewer serializers are required. But, in any cas
 
 This allows any type of data to be serialized. For example, you can serialize a parsed AST.  
 The main goal is to make it easier to write serializers to pass data between isolates.  
-

@@ -1,3 +1,7 @@
+# 0.1.8
+
+- Added code generation example to `README.md` file
+
 # 0.1.7
 
 - Fixed bug in helper function `serialize`
