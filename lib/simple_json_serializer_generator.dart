@@ -16,12 +16,25 @@ class SimpleJsonSerializerGenerator {
       for (final key in classes.keys) {
         final class_ = Class((b) {
           final className = '$key';
-          b.name = className;
           final classData = _getValue<Map>(classes, className);
-          for (final key in classData.keys) {
+          final fieldsData = _getValue<Map>(classData, 'fields');
+          b.name = className;
+          final extend = _tryGetValue<String>(classData, 'extends');
+          if (extend != null) {
+            b.extend = Reference(extend);
+          }
+
+          for (final key in fieldsData.keys) {
             final fieldName = '$key';
-            final filedData = _getFieldData(classData, fieldName);
-            final type = _getValue<String>(filedData, 'type');
+            final fieldData = _getFieldData(fieldsData, fieldName);
+            final type = _getValue<String>(fieldData, 'type');
+            final metadata = _tryGetValue<List>(fieldData, 'metadata');
+            if (metadata != null) {
+              for (final annotation in metadata) {
+                b.annotations.add(CodeExpression(Code('$annotation')));
+              }
+            }
+
             b.fields.add(Field((b) {
               b.name = fieldName;
               b.type = Reference(type);
@@ -30,7 +43,7 @@ class SimpleJsonSerializerGenerator {
           }
 
           b.constructors.add(Constructor((b) {
-            for (final key in classData.keys) {
+            for (final key in fieldsData.keys) {
               final fieldName = '$key';
               b.optionalParameters.add(Parameter((b) {
                 b.required = true;
@@ -62,7 +75,8 @@ class SimpleJsonSerializerGenerator {
           final enumName = '$key';
           b.name = enumName;
           final enumData = _getValue<Map>(enums, enumName);
-          for (final key in enumData.keys) {
+          final valuesData = _getValue<Map>(enumData, 'values');
+          for (final key in valuesData.keys) {
             final valueName = '$key';
             b.values.add(EnumValue((b) {
               b.name = valueName;
@@ -160,6 +174,7 @@ class SimpleJsonSerializerGenerator {
           b.name = generateName(className);
           b.extend = Reference('JsonSerializer<$className>');
           final classData = _getValue<Map>(classes, className);
+          final fieldsData = _getValue<Map>(classData, 'fields');
           b.methods.add(Method((b) {
             b.annotations.add(CodeExpression(Code('override')));
             b.name = 'deserialize';
@@ -176,14 +191,15 @@ class SimpleJsonSerializerGenerator {
             final code = <String>[];
             code.add('final json = cast<Map>(value);');
             code.add('return $className(');
-            for (final key in classData.keys) {
+            for (final key in fieldsData.keys) {
               final fieldName = '$key';
-              final fieldData = _getFieldData(classData, fieldName);
+              final fieldData = _getFieldData(fieldsData, fieldName);
               final type = _getValue<String>(fieldData, 'type').trim();
               final alias =
                   (_tryGetValue<String>(fieldData, 'alias') ?? fieldName)
                       .trim();
               final defaultValue = _tryGetValue(fieldData, 'defaultValue');
+              final deserialize = _tryGetValue(fieldData, 'deserialize');
               var collection = '';
               if (type.startsWith('List<')) {
                 collection = 'List';
@@ -191,13 +207,17 @@ class SimpleJsonSerializerGenerator {
                 collection = 'Map';
               }
 
-              var defaultValueCode = '';
+              var read = "json['$alias']";
+              if (deserialize != null) {
+                read = '$deserialize($read)';
+              }
+
               if (defaultValue != null) {
-                defaultValueCode = ' ?? $defaultValue';
+                read = '$read ?? $defaultValue';
               }
 
               code.add(
-                  "$fieldName: deserializer.deserialize$collection(json['$alias']$defaultValueCode),");
+                  "$fieldName: deserializer.deserialize$collection($read),");
             }
 
             code.add(');');
@@ -219,13 +239,14 @@ class SimpleJsonSerializerGenerator {
 
             final code = <String>[];
             code.add('return {');
-            for (final key in classData.keys) {
+            for (final key in fieldsData.keys) {
               final fieldName = '$key';
-              final fieldData = _getFieldData(classData, fieldName);
+              final fieldData = _getFieldData(fieldsData, fieldName);
               final type = _getValue<String>(fieldData, 'type').trim();
               final alias =
                   (_tryGetValue<String>(fieldData, 'alias') ?? fieldName)
                       .trim();
+              final serialize = _tryGetValue(fieldData, 'serialize');
               var collection = '';
               if (type.startsWith('List<')) {
                 collection = 'List';
@@ -233,8 +254,12 @@ class SimpleJsonSerializerGenerator {
                 collection = 'Map';
               }
 
-              code.add(
-                  "'$alias': serializer.serialize$collection(value.$fieldName),");
+              var read = 'value.$fieldName';
+              if (serialize != null) {
+                read = '$serialize($read)';
+              }
+
+              code.add("'$alias': serializer.serialize$collection($read),");
             }
 
             code.add('};');
@@ -260,8 +285,9 @@ class SimpleJsonSerializerGenerator {
           b.name = generateName(enumName);
           b.extend = Reference('JsonSerializer<$enumName>');
           final enumData = _getValue<Map>(enums, enumName);
+          final valuesData = _getValue<Map>(enumData, 'values');
           final values = <String, dynamic>{};
-          for (final key in enumData.keys) {
+          for (final key in valuesData.keys) {
             final valueName = '$key'.trim();
             final value = _tryGetValue(enumData, valueName);
             values[valueName] = value;

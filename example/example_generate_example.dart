@@ -40,39 +40,45 @@ void main() {
 
 const _classes = '''
 Company:
-  name: String
-  website: Uri
+  fields:
+    name: String
+    website: Uri
 
 Customer:
-  age: int?
-  birthday: DateTime?
-  frequency: Duration
-  level: {type: CustomerLevel, alias: customer_level}
-  name: String
+  fields:
+    age: int?
+    birthday: DateTime?
+    frequency: Duration
+    level: {type: CustomerLevel, alias: customer_level}
+    name: String
 
 Order:
-  amount: BigInt
-  company: Company
-  customer: Customer
-  date: DateTime
-  lines: List<OrderLine>
+  fields:
+    amount: BigInt
+    company: Company
+    customer: Customer
+    date: DateTime
+    lines: List<OrderLine>
 
 OrderLine:
-  product: Product
-  price: BigInt
-  quantity: int
-  total: BigInt
+  fields:
+    product: Product
+    price: BigInt
+    quantity: int
+    total: BigInt
 
 Product:
-  name: String
-  price: BigInt
-  priceRange: Map<String, double>
+  fields:
+    name: String
+    price: BigInt
+    priceRange: Map<String, double>
 ''';
 
 const _enums = '''
 CustomerLevel:
-  retail:
-  wholesale: "'wholesaler'"
+  values:
+    retail:
+    wholesale: "'wholesaler'"
 ''';
 
 const _serializers = '''

@@ -271,15 +271,13 @@ class _ProductSerializer extends JsonSerializer<Product> {
 class _CustomerLevelSerializer extends JsonSerializer<CustomerLevel> {
   @override
   CustomerLevel deserialize(Deserializer deserializer, Object? value) {
-    const map = {0: 0, 'wholesaler': 1};
-    final index = map[value] as int;
-    return CustomerLevel.values[index];
+    final json = cast<int>(value);
+    return CustomerLevel.values[json];
   }
 
   @override
-  Object? serialize(Serializer serializer, CustomerLevel value) {
-    const map = {0: 0, 1: 'wholesaler'};
-    return map[value.index];
+  int serialize(Serializer serializer, CustomerLevel value) {
+    return value.index;
   }
 }
 

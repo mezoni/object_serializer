@@ -1,3 +1,9 @@
+# 0.2.0
+
+- Breaking change in `SimpleJsonSerializerGenerator`. To enhance the generation of classes and enumerations, fields and values should now be located under attributes `fields` and `values`, respectively.
+- Added the ability to specify a superclass (`extends`) for the class
+- Added the ability to specify custom serialization functions for class fields (`deserialize`, `serialize`)
+
 # 0.1.8
 
 - Added code generation example to `README.md` file

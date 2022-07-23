@@ -2,7 +2,7 @@
 
 A collection of serializers for serializing data in a variety of ways (JSON, Generic Objects).
 
-Version: 0.1.8
+Version: 0.2.0
 
 Two kinds of data serializers are currently available:  
 - JSON serializer
@@ -24,41 +24,47 @@ Let's say that we need to use this data objects to exchange data in JSON format.
 
 ```yaml
 Company:
-  name: String
-  website: Uri
+  fields:
+    name: String
+    website: Uri
 
 Customer:
-  age: int?
-  birthday: DateTime?
-  frequency: Duration
-  level: {type: CustomerLevel, alias: customer_level}
-  name: String
+  fields:
+    age: int?
+    birthday: DateTime?
+    frequency: Duration
+    level: {type: CustomerLevel, alias: customer_level}
+    name: String
 
 Order:
-  amount: BigInt
-  company: Company
-  customer: Customer
-  date: DateTime
-  lines: List<OrderLine>
+  fields:
+    amount: BigInt
+    company: Company
+    customer: Customer
+    date: DateTime
+    lines: List<OrderLine>
 
 OrderLine:
-  product: Product
-  price: BigInt
-  quantity: int
-  total: BigInt
+  fields:
+    product: Product
+    price: BigInt
+    quantity: int
+    total: BigInt
 
 Product:
-  name: String
-  price: BigInt
-  priceRange: Map<String, double>
+  fields:
+    name: String
+    price: BigInt
+    priceRange: Map<String, double>
 ```
 
 Enums:
 
 ```yaml
 CustomerLevel:
-  retail:
-  wholesale: "'wholesaler'"
+  values:
+    retail:
+    wholesale: "'wholesaler'"
 ```
 
 And other serializers for the types we use in our classes.  
