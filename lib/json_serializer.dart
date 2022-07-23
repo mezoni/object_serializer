@@ -184,12 +184,7 @@ class Deserializer {
       }
     }
 
-    _error(throw StateError(
-        'Unable to cast value ${value.runtimeType} to type $T'));
-  }
-
-  Never _error(String message) {
-    throw StateError(message);
+    throw StateError('Unable to cast value ${value.runtimeType} to type $T');
   }
 }
 

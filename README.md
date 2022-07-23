@@ -2,7 +2,7 @@
 
 A collection of serializers for serializing data in a variety of ways (JSON, Generic Objects).
 
-Version: 0.1.5
+Version: 0.1.6
 
 Two kinds of data serializers are currently available:  
 - JSON serializer

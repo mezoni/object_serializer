@@ -1,3 +1,7 @@
+# 0.1.6
+
+- Added small code fix
+
 # 0.1.5
 
 - Improved simple code generator `SimpleJsonSerializerGenerator`
