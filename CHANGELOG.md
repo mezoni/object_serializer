@@ -1,3 +1,7 @@
+# 0.3.1
+
+- Improved  an example of using the code generator `SimpleJsonSerializerGenerator`
+
 # 0.3.0
 
 - Breaking change: Removed generator `SimpleJsonSerializerGenerator`;

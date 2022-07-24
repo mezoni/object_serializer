@@ -134,12 +134,11 @@ void main(List<String> args) {
     ],
   );
 
-  final orders = [order, order];
-  final jsonObject = orders.map((e) => e.toJson()).toList();
+  final jsonObject = Order.toJsonList([order, order]);
   final jsonString = jsonEncode(jsonObject);
   final jsonObject2 = jsonDecode(jsonString);
-  final orders2 = Order.fromJsonList(jsonObject2 as List);
-  final jsonObject3 = orders2.map((e) => e.toJson()).toList();
+  final orders = Order.fromJsonList(jsonObject2 as List);
+  final jsonObject3 = Order.toJsonList(orders);
   final jsonString2 = jsonEncode(jsonObject3);
   final result = jsonString == jsonString2;
   print(jsonString2);
