@@ -243,12 +243,31 @@ class JsonSerializerGenerator {
     final name = typeInfo.nameWithSuffix;
     final typeArguments = typeInfo.arguments;
     if (typeArguments.isEmpty) {
-      const types = {
-        'bool',
-        'double',
-        'int',
-        'num',
-        'String',
+      const primitiveTypes = {
+        'bool?',
+        'double?',
+        'int?',
+        'num?',
+        'String?',
+      };
+      if (primitiveTypes.contains(name)) {
+        return '$value as $name';
+      }
+
+      final defaultValues = {
+        'bool': 'false',
+        'double': ' 0.0',
+        'int': '0',
+        'num': '0',
+        'String': "''",
+      };
+
+      final defaultValue = defaultValues[name];
+      if (defaultValue != null) {
+        return '$value == null ? $defaultValue : $value as $name';
+      }
+
+      const bottomTypes = {
         'dynamic',
         'dynamic?',
         'Null',
@@ -256,21 +275,8 @@ class JsonSerializerGenerator {
         'Object',
         'Object?',
       };
-      if (types.contains(name)) {
-        return '$value as $name';
-      }
-
-      final defaultValues = {
-        'bool?': 'false',
-        'double?': ' 0.0',
-        'int?': '0',
-        'num?': '0',
-        'String?': "''",
-      };
-
-      final defaultValue = defaultValues[name];
-      if (defaultValue != null) {
-        return '$value == null ? null : $defaultValue';
+      if (bottomTypes.contains(name)) {
+        return value;
       }
     }
 

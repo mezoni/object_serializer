@@ -1,6 +1,10 @@
+# 0.3.2
+
+- Fixed bug in `JsonSerializerGenerator`
+
 # 0.3.1
 
-- Improved  an example of using the code generator `SimpleJsonSerializerGenerator`
+- Improved  an example of using the code generator `JsonSerializerGenerator`
 
 # 0.3.0
 
