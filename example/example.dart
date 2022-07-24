@@ -55,7 +55,7 @@ class Company {
 
   factory Company.fromJson(Map json) {
     return Company(
-      name: json['name'] as String,
+      name: json['name'] == null ? '' : json['name'] as String,
       website: _UriSerializer.deserialize(json['website']),
     );
   }
@@ -90,13 +90,13 @@ class Customer {
 
   factory Customer.fromJson(Map json) {
     return Customer(
-      age: json['age'] == null ? null : 0,
+      age: json['age'] as int?,
       birthday: json['birthday'] == null
           ? null
           : _DateTimeSerializer.deserialize(json['birthday']),
       frequency: _DurationSerializer.deserialize(json['frequency']),
       level: _CustomerLevelSerializer.deserialize(json['customer_level']),
-      name: json['name'] as String,
+      name: json['name'] == null ? '' : json['name'] as String,
     );
   }
 
@@ -193,7 +193,7 @@ class OrderLine {
     return OrderLine(
       product: Product.fromJson(json['product'] as Map),
       price: _BigIntSerializer.deserialize(json['price']),
-      quantity: json['quantity'] as int,
+      quantity: json['quantity'] == null ? 0 : json['quantity'] as int,
       total: _BigIntSerializer.deserialize(json['total']),
     );
   }
@@ -229,12 +229,12 @@ class Product {
 
   factory Product.fromJson(Map json) {
     return Product(
-      name: json['name'] as String,
+      name: json['name'] == null ? '' : json['name'] as String,
       price: _BigIntSerializer.deserialize(json['price']),
       priceRange: json['priceRange'] == null
           ? {}
-          : (json['priceRange'] as Map)
-              .map((k, v) => MapEntry(k as String, v as double)),
+          : (json['priceRange'] as Map).map(
+              (k, v) => MapEntry(k as String, v == null ? 0.0 : v as double)),
     );
   }
 

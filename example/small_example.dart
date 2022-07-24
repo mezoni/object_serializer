@@ -39,12 +39,14 @@ class Post {
 
   factory Post.fromJson(Map json) {
     return Post(
-      id: json['id'] as int,
+      id: json['id'] == null ? 0 : json['id'] as int,
       user: User.fromJson(json['user'] as Map),
-      text: json['text'] as String,
+      text: json['text'] == null ? '' : json['text'] as String,
       comments: json['comments'] == null
           ? null
-          : (json['comments'] as List).map((e) => e as int).toList(),
+          : (json['comments'] as List)
+              .map((e) => e == null ? 0 : e as int)
+              .toList(),
     );
   }
 
@@ -79,9 +81,9 @@ class User {
 
   factory User.fromJson(Map json) {
     return User(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      age: json['age'] == null ? null : 0,
+      id: json['id'] == null ? 0 : json['id'] as int,
+      name: json['name'] == null ? '' : json['name'] as String,
+      age: json['age'] as int?,
     );
   }
 

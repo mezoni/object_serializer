@@ -1,3 +1,7 @@
+# 0.3.4
+
+- After the bug was fixed, new example files were generated.
+
 # 0.3.2
 
 - Fixed bug in `JsonSerializerGenerator`
