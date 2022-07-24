@@ -1,3 +1,8 @@
+# 0.3.0
+
+- Breaking change: Removed generator `SimpleJsonSerializerGenerator`;
+- Added code generator `JsonSerializerGenerator`. It generates `pure` JSON code, similar to what the generator from the `json_serializable` package generates. It also supports generating custom serializers for non-serializable types (like BigInt, DateTime, Duration, Uri, etc.).
+
 # 0.2.0
 
 - Breaking change in `SimpleJsonSerializerGenerator`. To enhance the generation of classes and enumerations, fields and values should now be located under attributes `fields` and `values`, respectively.
