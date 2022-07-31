@@ -1,0 +1,21 @@
+classes:
+  Foo:
+    fields:
+      bar: Bar
+  Bar:
+    fields:
+      baz: Baz
+  Baz:
+    fields:
+      date:
+        type: DateTime
+
+serializers:
+  DateTime:
+    type: _DateTimeSerializer
+    deserialize: |-
+      final json = value as String;
+      return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
+
+    serialize: |-
+      return value.microsecondsSinceEpoch.toString();

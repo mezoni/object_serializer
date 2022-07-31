@@ -79,8 +79,6 @@ BigInt:
   serialize: |-
      return value.toString();
 
-
-
 DateTime:
   type: _DateTimeSerializer
   deserialize: |-

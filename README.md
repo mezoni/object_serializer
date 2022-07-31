@@ -2,7 +2,7 @@
 
 A collection of serializers for serializing data in a variety of ways (JSON, Generic Objects).
 
-Version: 0.3.4
+Version: 0.3.6
 
 Two kinds of data serializers are currently available:  
 - JSON serializer
@@ -23,238 +23,147 @@ Implementing an object serializer is also very simple. To do this, you need to w
 Let's say that we need to use this data objects to exchange data in JSON format.
 
 ```yaml
-Post:
-  fields:
-    id: int
-    user: User
-    text: String
-    comments: List<int>?
+classes:
+  Foo:
+    fields:
+      bar: Bar
+  Bar:
+    fields:
+      baz: Baz
+  Baz:
+    fields:
+      date:
+        type: DateTime
 
-User:
-  fields:
-    id: int
-    name: String
-    age: int?
+serializers:
+  DateTime:
+    type: _DateTimeSerializer
+    deserialize: |-
+      final json = value as String;
+      return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
+
+    serialize: |-
+      return value.microsecondsSinceEpoch.toString();
+
 ```
 
 Now let's try to generate the code.  
-We will use a generator for this.
+Let's do this through the project build process.  
 
-```dart
-import 'dart:io';
+Let's call this file `example\example_models.json.yaml`.
 
-import 'package:object_serializer/json_serializer_generator.dart';
-import 'package:yaml/yaml.dart';
+You need to add dependencies to the `pubspec.yaml` file.
 
-void main() {
-  final classes = loadYaml(_classes) as Map;
-  final serializers = loadYaml(_serializers) as Map;
-  final g = JsonSerializerGenerator();
-  final classesCode = g.generateClasses(
-    classes,
-    serializers: serializers,
-  );
-  final serializersCode = g.generateSerializers(
-    serializers,
-  );
-  final enums = loadYaml(_enums) as Map;
-  final enumCode = g.generateEnums(enums);
-  final values = {
-    'classes': classesCode,
-    'enums': enumCode,
-    'serializers': serializersCode,
-  };
-
-  var source = g.render(_template, values);
-  source = g.format(source);
-  File('example/small_example.dart').writeAsStringSync(source);
-}
-
-const _classes = '''
-Post:
-  fields:
-    id: int
-    user: User
-    text: String
-    comments: List<int>?
-
-User:
-  fields:
-    id: int
-    name: String
-    age: int?
-''';
-
-const _enums = '''
-{}
-''';
-
-const _serializers = '''
-{}
-''';
-
-const _template = r'''
-import 'dart:convert';
-
-void main(List<String> args) {
-  final user = User(
-    id: 1,
-    name: "Jack",
-    age: null,
-  );
-
-  final post1 = Post(
-    id: 1,
-    user: user,
-    text: 'Hello!',
-    comments: [123, 456],
-  );
-
-  final post2 = Post(
-    id: 2,
-    user: user,
-    text: 'Goodbye!',
-    comments: null,
-  );
-
-  final input = Post.toJsonList([post1, post2]);
-  final json = jsonEncode(input);
-  final output = jsonDecode(json);
-  final posts = Post.fromJsonList(output as List);
-  print(json);
-  print('Posts: ${posts.length}');
-  print('Users: ${posts.map((e) => e.user.name)}');
-}
-
-{{classes}}
-
-{{enums}}
-
-{{serializers}}
-''';
+```yaml
+dev_dependencies:
+  build_runner: any
+  object_serializer: ^0.3.6
 ```
 
-Generated source code:
+And start the build process:
+
+`dart run build_runner build`
+
+As a result of the `build_runner` operation, the `example\example_models.json.dart` file will be generated.
 
 ```dart
-import 'dart:convert';
+class Foo {
+  Foo({required this.bar});
 
-void main(List<String> args) {
-  final user = User(
-    id: 1,
-    name: "Jack",
-    age: null,
-  );
-
-  final post1 = Post(
-    id: 1,
-    user: user,
-    text: 'Hello!',
-    comments: [123, 456],
-  );
-
-  final post2 = Post(
-    id: 2,
-    user: user,
-    text: 'Goodbye!',
-    comments: null,
-  );
-
-  final input = Post.toJsonList([post1, post2]);
-  final json = jsonEncode(input);
-  final output = jsonDecode(json);
-  final posts = Post.fromJsonList(output as List);
-  print(json);
-  print('Posts: ${posts.length}');
-  print('Users: ${posts.map((e) => e.user.name)}');
-}
-
-class Post {
-  Post(
-      {required this.id,
-      required this.user,
-      required this.text,
-      required this.comments});
-
-  factory Post.fromJson(Map json) {
-    return Post(
-      id: json['id'] == null ? 0 : json['id'] as int,
-      user: User.fromJson(json['user'] as Map),
-      text: json['text'] == null ? '' : json['text'] as String,
-      comments: json['comments'] == null
-          ? null
-          : (json['comments'] as List)
-              .map((e) => e == null ? 0 : e as int)
-              .toList(),
+  factory Foo.fromJson(Map json) {
+    return Foo(
+      bar: Bar.fromJson(json['bar'] as Map),
     );
   }
 
-  final int id;
+  final Bar bar;
 
-  final User user;
-
-  final String text;
-
-  final List<int>? comments;
-
-  static List<Post> fromJsonList(List json) {
-    return json.map((e) => Post.fromJson(e as Map)).toList();
+  static List<Foo> fromJsonList(List json) {
+    return json.map((e) => Foo.fromJson(e as Map)).toList();
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'user': user.toJson(),
-      'text': text,
-      'comments': comments,
+      'bar': bar.toJson(),
     };
   }
 
-  static List<Map<String, dynamic>> toJsonList(List<Post> list) {
+  static List<Map<String, dynamic>> toJsonList(List<Foo> list) {
     return list.map((e) => e.toJson()).toList();
   }
 }
 
-class User {
-  User({required this.id, required this.name, required this.age});
+class Bar {
+  Bar({required this.baz});
 
-  factory User.fromJson(Map json) {
-    return User(
-      id: json['id'] == null ? 0 : json['id'] as int,
-      name: json['name'] == null ? '' : json['name'] as String,
-      age: json['age'] as int?,
+  factory Bar.fromJson(Map json) {
+    return Bar(
+      baz: Baz.fromJson(json['baz'] as Map),
     );
   }
 
-  final int id;
+  final Baz baz;
 
-  final String name;
-
-  final int? age;
-
-  static List<User> fromJsonList(List json) {
-    return json.map((e) => User.fromJson(e as Map)).toList();
+  static List<Bar> fromJsonList(List json) {
+    return json.map((e) => Bar.fromJson(e as Map)).toList();
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
-      'age': age,
+      'baz': baz.toJson(),
     };
   }
 
-  static List<Map<String, dynamic>> toJsonList(List<User> list) {
+  static List<Map<String, dynamic>> toJsonList(List<Bar> list) {
     return list.map((e) => e.toJson()).toList();
   }
 }
+
+class Baz {
+  Baz({required this.date});
+
+  factory Baz.fromJson(Map json) {
+    return Baz(
+      date: _DateTimeSerializer.deserialize(json['date']),
+    );
+  }
+
+  final DateTime date;
+
+  static List<Baz> fromJsonList(List json) {
+    return json.map((e) => Baz.fromJson(e as Map)).toList();
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': _DateTimeSerializer.serialize(date),
+    };
+  }
+
+  static List<Map<String, dynamic>> toJsonList(List<Baz> list) {
+    return list.map((e) => e.toJson()).toList();
+  }
+}
+
+class _DateTimeSerializer {
+  static DateTime deserialize(Object? value) {
+    final json = value as String;
+    return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
+  }
+
+  static Object? serialize(DateTime value) {
+    return value.microsecondsSinceEpoch.toString();
+  }
+}
+
 ```
 
-The result of executing the generated code:
+Second way. Using a generator for this.  
+Example of generator script can be found here:  
+https://github.com/mezoni/object_serializer/blob/master/example/example_generate_small_example.dart
 
-[{"id":1,"user":{"id":1,"name":"Jack","age":null},"text":"Hello!","comments":[123,456]},{"id":2,"user":{"id":1,"name":"Jack","age":null},"text":"Goodbye!","comments":null}]
-Posts: 2
-Users: (Jack, Jack)
+Example of generated script can be found here:  
+https://github.com/mezoni/object_serializer/blob/master/example/small_example.dart
 
 ## Object serializer
 

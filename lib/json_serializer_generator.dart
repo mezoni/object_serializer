@@ -1,6 +1,7 @@
 import 'package:code_builder/code_builder.dart';
 import 'package:dart_style/dart_style.dart';
 
+import 'src/map_reader.dart';
 import 'src/type_info.dart';
 import 'src/type_parser.dart';
 
@@ -21,30 +22,37 @@ class JsonSerializerGenerator {
     void Function(ClassBuilder builder, Map classData)? build,
     Map serializers = const {},
   }) {
+    final classReader = MapReader(classes);
+    final serializerReader = MapReader(serializers);
     final library = Library((b) {
       for (final key in classes.keys) {
         final class_ = Class((b) {
           final className = '$key';
-          final classData = _getValue<Map>(classes, className);
-          final fieldsData = _getValue<Map>(classData, 'fields');
           b.name = className;
-          final extend = _tryGetValue<String>(classData, 'extends');
+          final extend =
+              classReader.tryRead<String>('$className.extends', false);
           if (extend != null) {
             b.extend = Reference(extend);
           }
 
+          final fieldsData = classReader.read<Map>('$className.fields');
           for (final key in fieldsData.keys) {
             final fieldName = '$key';
-            final fieldData = _getFieldData(fieldsData, fieldName);
-            final type = _getValue<String>(fieldData, 'type');
-            final metadata = _tryGetValue<List>(fieldData, 'metadata');
-            if (metadata != null) {
-              for (final annotation in metadata) {
-                b.annotations.add(CodeExpression(Code('$annotation')));
-              }
-            }
-
             b.fields.add(Field((b) {
+              var type = classReader.tryRead<String>(
+                  '$className.fields.$fieldName', false);
+              if (type == null) {
+                type = classReader
+                    .read<String>('$className.fields.$fieldName.type');
+                final metadata = classReader.tryRead<List>(
+                    '$className.fields.$fieldName.metadata', false);
+                if (metadata != null) {
+                  for (final annotation in metadata) {
+                    b.annotations.add(CodeExpression(Code('$annotation')));
+                  }
+                }
+              }
+
               b.name = fieldName;
               b.type = Reference(type);
               b.modifier = FieldModifier.final$;
@@ -75,18 +83,27 @@ class JsonSerializerGenerator {
             code.add('return $className(');
             for (final key in fieldsData.keys) {
               final fieldName = '$key';
-              final fieldData = _getFieldData(fieldsData, fieldName);
-              final type = _getValue<String>(fieldData, 'type').trim();
+              var alias = fieldName;
+              String? deserialize;
+              var type = classReader.tryRead<String>(
+                  '$className.fields.$fieldName', false);
+              if (type == null) {
+                type = classReader
+                    .read<String>('$className.fields.$fieldName.type');
+                alias = (classReader.tryRead<String>(
+                            '$className.fields.$fieldName.alias', false) ??
+                        fieldName)
+                    .trim();
+                deserialize = classReader.tryRead(
+                    '$className.fields.$fieldName.deserialize', false);
+              }
+
               final typeInfo = _parseType(type);
-              final alias =
-                  (_tryGetValue<String>(fieldData, 'alias') ?? fieldName)
-                      .trim();
-              final deserialize = _tryGetValue(fieldData, 'deserialize');
               var value = "json['$alias']";
               if (deserialize != null) {
                 value = '$deserialize($value)';
               } else {
-                value = _deserialize(typeInfo, value, serializers);
+                value = _deserialize(typeInfo, value, serializerReader);
               }
 
               code.add("$fieldName: $value,");
@@ -118,18 +135,27 @@ class JsonSerializerGenerator {
             code.add('return {');
             for (final key in fieldsData.keys) {
               final fieldName = '$key';
-              final fieldData = _getFieldData(fieldsData, fieldName);
-              final type = _getValue<String>(fieldData, 'type').trim();
+              var alias = fieldName;
+              String? serialize;
+              var type = classReader.tryRead<String>(
+                  '$className.fields.$fieldName', false);
+              if (type == null) {
+                type = classReader
+                    .read<String>('$className.fields.$fieldName.type');
+                alias = (classReader.tryRead<String>(
+                            '$className.fields.$fieldName.alias', false) ??
+                        fieldName)
+                    .trim();
+                serialize = classReader.tryRead(
+                    '$className.fields.$fieldName.serialize', false);
+              }
+
               final typeInfo = _parseType(type);
-              final alias =
-                  (_tryGetValue<String>(fieldData, 'alias') ?? fieldName)
-                      .trim();
-              final serialize = _tryGetValue(fieldData, 'serialize');
               var value = fieldName;
               if (serialize != null) {
                 value = '$serialize($value)';
               } else {
-                value = _serialize(typeInfo, value, serializers);
+                value = _serialize(typeInfo, value, serializerReader);
               }
 
               code.add("'$alias': $value,");
@@ -165,15 +191,14 @@ class JsonSerializerGenerator {
 
   String generateEnums(Map enums) {
     final library = Library((lib) {
+      final enumReader = MapReader(enums);
       for (final key in enums.keys) {
         final enum_ = Enum((b) {
           final enumName = '$key';
           b.name = enumName;
-          final enumData = _getValue<Map>(enums, enumName);
-          final valuesData = _getValue<Map>(enumData, 'values');
+          final valuesData = enumReader.read<Map>('$enumName.values');
           for (final key in valuesData.keys) {
             final valueName = '$key';
-            _getEnumValueData(valuesData, key);
             b.values.add(EnumValue((b) {
               b.name = valueName;
             }));
@@ -193,9 +218,10 @@ class JsonSerializerGenerator {
     final library = Library((b) {
       for (final key in serializers.keys) {
         final class_ = Class((b) {
-          final classData = _getValue<Map>(serializers, key);
-          final type = _getValue<String>(classData, 'type');
-          b.name = type;
+          final typeName = '$key';
+          final reader = MapReader(serializers);
+          final className = reader.read<String>('$typeName.type');
+          b.name = className;
           b.methods.add(Method((b) {
             b.static = true;
             b.name = 'deserialize';
@@ -204,7 +230,7 @@ class JsonSerializerGenerator {
               b.name = 'value';
               b.type = Reference('Object?');
             }));
-            final body = _getValue<String>(classData, 'deserialize');
+            final body = reader.read<String>('$typeName.deserialize');
             b.body = Code(body);
           }));
 
@@ -216,7 +242,7 @@ class JsonSerializerGenerator {
               b.name = 'value';
               b.type = Reference('$key');
             }));
-            final body = _getValue<String>(classData, 'serialize');
+            final body = reader.read<String>('$typeName.serialize');
             b.body = Code(body);
           }));
         });
@@ -239,7 +265,7 @@ class JsonSerializerGenerator {
     return template;
   }
 
-  String _deserialize(TypeInfo typeInfo, String value, Map serializers) {
+  String _deserialize(TypeInfo typeInfo, String value, MapReader serializers) {
     final name = typeInfo.nameWithSuffix;
     final typeArguments = typeInfo.arguments;
     if (typeArguments.isEmpty) {
@@ -301,7 +327,7 @@ class JsonSerializerGenerator {
       default:
         if (typeArguments.isEmpty) {
           final name = typeInfo.name;
-          final serializer = _tryGetValue(serializers, name);
+          final serializer = serializers.tryRead(name, false);
           if (serializer != null) {
             return _deserializeWith(typeInfo, value, serializers);
           }
@@ -313,7 +339,8 @@ class JsonSerializerGenerator {
     throw StateError('Unable to generate deserializer for type $typeInfo');
   }
 
-  String _deserializeList(TypeInfo typeInfo, String value, Map serializers) {
+  String _deserializeList(
+      TypeInfo typeInfo, String value, MapReader serializers) {
     final typeArguments = typeInfo.arguments;
     final elementType = typeArguments[0];
     final serializeElement = _deserialize(elementType, 'e', serializers);
@@ -324,7 +351,8 @@ class JsonSerializerGenerator {
     return code.join('\n');
   }
 
-  String _deserializeMap(TypeInfo typeInfo, String value, Map serializers) {
+  String _deserializeMap(
+      TypeInfo typeInfo, String value, MapReader serializers) {
     final typeArguments = typeInfo.arguments;
     final valueType = typeArguments[1];
     final serializeValue = _deserialize(valueType, 'v', serializers);
@@ -347,10 +375,10 @@ class JsonSerializerGenerator {
     return code.join('\n');
   }
 
-  String _deserializeWith(TypeInfo typeInfo, String value, Map serializers) {
+  String _deserializeWith(
+      TypeInfo typeInfo, String value, MapReader serializers) {
     final name = typeInfo.name;
-    final serializerData = _getValue<Map>(serializers, name);
-    final serializerTypeName = _getValue<String>(serializerData, 'type');
+    final serializerTypeName = serializers.read<String>('$name.type');
     final code = <String>[];
     if (_isNullableType(typeInfo)) {
       code.add(
@@ -360,35 +388,6 @@ class JsonSerializerGenerator {
     }
 
     return code.join('\n');
-  }
-
-  Map _getEnumValueData(Map map, key) {
-    final result = _tryGetValue<Map>(map, key);
-    if (result != null) {
-      return result;
-    }
-
-    return {};
-  }
-
-  Map _getFieldData(Map map, key) {
-    final type = _tryGetValue<String>(map, key);
-    if (type != null) {
-      return {'type': type};
-    }
-
-    final result = _getValue<Map>(map, key);
-    return result;
-  }
-
-  T _getValue<T>(Map map, Object? key) {
-    final result = map[key];
-    if (result is T) {
-      return result;
-    }
-
-    throw StateError(
-        "Unable to cast field ${result.runtimeType} '$key' to type $T");
   }
 
   bool _isNullableType(TypeInfo typeInfo) {
@@ -406,7 +405,7 @@ class JsonSerializerGenerator {
     return result;
   }
 
-  String _serialize(TypeInfo typeInfo, String value, Map serializers) {
+  String _serialize(TypeInfo typeInfo, String value, MapReader serializers) {
     const types = {
       'bool',
       'bool?',
@@ -452,7 +451,7 @@ class JsonSerializerGenerator {
       default:
         if (typeArguments.isEmpty) {
           final name = typeInfo.name;
-          final serializer = _tryGetValue(serializers, name);
+          final serializer = serializers.tryRead(name, false);
           if (serializer != null) {
             return _serializeWith(typeInfo, value, serializers);
           }
@@ -464,7 +463,8 @@ class JsonSerializerGenerator {
     throw StateError('Unable to generate serializer for type $typeInfo');
   }
 
-  String _serializeList(TypeInfo typeInfo, String value, Map serializers) {
+  String _serializeList(
+      TypeInfo typeInfo, String value, MapReader serializers) {
     final typeArguments = typeInfo.arguments;
     final code = <String>[];
     final elementType = typeArguments[0];
@@ -479,7 +479,7 @@ class JsonSerializerGenerator {
     return code.join('\n');
   }
 
-  String _serializeMap(TypeInfo typeInfo, String value, Map serializers) {
+  String _serializeMap(TypeInfo typeInfo, String value, MapReader serializers) {
     final typeArguments = typeInfo.arguments;
     final code = <String>[];
     final valueType = typeArguments[0];
@@ -501,10 +501,10 @@ class JsonSerializerGenerator {
     return code.join('\n');
   }
 
-  String _serializeWith(TypeInfo typeInfo, String value, Map serializers) {
+  String _serializeWith(
+      TypeInfo typeInfo, String value, MapReader serializers) {
     final name = typeInfo.name;
-    final serializerData = _getValue<Map>(serializers, name);
-    final serializerTypeName = _getValue<String>(serializerData, 'type');
+    final serializerTypeName = serializers.read<String>('$name.type');
     final code = <String>[];
     if (_isNullableType(typeInfo)) {
       code.add(
@@ -514,14 +514,5 @@ class JsonSerializerGenerator {
     }
 
     return code.join('\n');
-  }
-
-  T? _tryGetValue<T>(Map map, Object? key) {
-    final result = map[key];
-    if (result is T) {
-      return result;
-    }
-
-    return null;
   }
 }

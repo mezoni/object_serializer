@@ -1,34 +1,43 @@
 {
     "configurations": [
         {
-            "name": "Dart (test\\test.dart)",
+            "name": "test//test.dart",
             "type": "dart",
             "request": "launch",
-            "program": "test\\test.dart"
+            "program": "test/test.dart"
         },
         {
-            "name": "Dart (example\\example.dart)",
+            "name": "example/example.dart",
             "type": "dart",
             "request": "launch",
-            "program": "example\\example.dart"
+            "program": "example/example.dart"
         },
         {
-            "name": "Dart (example\\example_generate.dart)",
+            "name": "example/example_generate.dart",
             "type": "dart",
             "request": "launch",
-            "program": "example\\example_generate.dart"
+            "program": "example/example_generate.dart"
         },
         {
-            "name": "Dart (example\\example_json.dart)",
+            "name": "example/example_json.dart",
             "type": "dart",
             "request": "launch",
-            "program": "example\\example_json.dart"
+            "program": "example/example_json.dart"
         },
         {
             "name": "example_generate_example.dart",
             "type": "dart",
             "request": "launch",
             "program": "example/example_generate_example.dart"
+        },
+        {
+            "name": ".dart_tool/build/entrypoint/build.dart",
+            "type": "dart",
+            "request": "launch",
+            "program": ".dart_tool/build/entrypoint/build.dart",
+            "args": [
+                "build"
+            ]
         }
     ]
 }

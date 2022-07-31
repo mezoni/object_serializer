@@ -94,33 +94,43 @@ class Deserializer {
 
     final tag = _readTag();
     Object? object;
+    var serialized = false;
     final knownTypeTag = _collection.tryGetKnownType(tag);
     if (knownTypeTag != null) {
       switch (knownTypeTag) {
         case KnownType.nullType:
+          serialized = true;
           break;
         case KnownType.boolType:
         case KnownType.doubleType:
         case KnownType.intType:
         case KnownType.stringType:
+          serialized = true;
           object = readRaw();
           break;
         case KnownType.listType:
-          object = _readList();
-          break;
         case KnownType.mapType:
-          object = _readMap();
-          break;
         case KnownType.mapEntryType:
-          object = _readMapEntry();
-          break;
         case KnownType.setType:
-          object = _readSet();
           break;
       }
-    } else {
-      final serializer = _collection.getSerializer<T>(tag);
-      object = serializer.deserialize(this);
+    }
+
+    if (!serialized) {
+      if (knownTypeTag == KnownType.listType) {
+        object = _readList();
+      } else if (knownTypeTag == KnownType.mapType) {
+        object = _readMap();
+      } else if (knownTypeTag == KnownType.mapEntryType) {
+        object = _readMapEntry();
+      } else if (knownTypeTag == KnownType.setType) {
+        object = _readSet();
+      } else {
+        final serializer = _collection.tryGetSerializer<T>(tag);
+        if (serializer != null) {
+          object = serializer.deserialize(this);
+        }
+      }
     }
 
     _cache[offset] = object;
@@ -356,13 +366,12 @@ class ObjectSerializerCollection {
   }
 
   ObjectSerializer<T> getSerializer<T>(int tag) {
-    final index = tag - _getStartTag();
-    if (index < 0 || index >= _serializerList.length) {
+    final result = tryGetSerializer<T>(tag);
+    if (result == null) {
       throw StateError('Object serializer not found: $tag');
     }
 
-    final result = _serializerList[index];
-    return _cast(result);
+    return result;
   }
 
   int? getTag<T>() {
@@ -391,6 +400,16 @@ class ObjectSerializerCollection {
 
     final result = values[tag];
     return result;
+  }
+
+  ObjectSerializer<T>? tryGetSerializer<T>(int tag) {
+    final index = tag - _getStartTag();
+    if (index < 0 || index >= _serializerList.length) {
+      return null;
+    }
+
+    final result = _serializerList[index];
+    return _cast(result);
   }
 
   int? tryGetTag<T>() {

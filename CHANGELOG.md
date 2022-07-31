@@ -1,14 +1,23 @@
+# 0.3.6
+
+- Added the ability to build json serializers from files `*.json.yaml` to `*.json.dart`.
+- The `JsonSerializerGenerator` now generates more informative error messages.
+
+# 0.3.5
+
+- Breaking change: Now `ObjectSerializer` is serialized to the value `List<int>` and serialized from the value `List<int>`.
+
 # 0.3.4
 
 - After the bug was fixed, new example files were generated.
 
 # 0.3.2
 
-- Fixed bug in `JsonSerializerGenerator`
+- Fixed bug in `JsonSerializerGenerator`.
 
 # 0.3.1
 
-- Improved  an example of using the code generator `JsonSerializerGenerator`
+- Improved  an example of using the code generator `JsonSerializerGenerator`.
 
 # 0.3.0
 
@@ -18,31 +27,31 @@
 # 0.2.0
 
 - Breaking change in `SimpleJsonSerializerGenerator`. To enhance the generation of classes and enumerations, fields and values should now be located under attributes `fields` and `values`, respectively.
-- Added the ability to specify a superclass (`extends`) for the class
-- Added the ability to specify custom serialization functions for class fields (`deserialize`, `serialize`)
+- Added the ability to specify a superclass (`extends`) for the class.
+- Added the ability to specify custom serialization functions for class fields (`deserialize`, `serialize`).
 
 # 0.1.8
 
-- Added code generation example to `README.md` file
+- Added code generation example to `README.md` file.
 
 # 0.1.7
 
-- Fixed bug in helper function `serialize`
-- Added the ability to specify default values for fields
+- Fixed bug in helper function `serialize`.
+- Added the ability to specify default values for fields.
 
 # 0.1.6
 
-- Added small code fix
+- Added small code fix.
 
 # 0.1.5
 
-- Improved simple code generator `SimpleJsonSerializerGenerator`
-- Improved  an example of using the code generator `SimpleJsonSerializerGenerator`
+- Improved simple code generator `SimpleJsonSerializerGenerator`.
+- Improved  an example of using the code generator `SimpleJsonSerializerGenerator`.
 
 # 0.1.4
 
-- Added simple code generator `SimpleJsonSerializerGenerator`
-- Added an example of using the code generator `SimpleJsonSerializerGenerator`
+- Added simple code generator `SimpleJsonSerializerGenerator`.
+- Added an example of using the code generator `SimpleJsonSerializerGenerator`.
 
 # 0.1.3
 

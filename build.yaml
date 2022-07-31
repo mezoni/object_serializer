@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      object_serializer|json_serializer:
+        generate_for:
+          - '**.json.yaml'
+builders:
+  json_serializer:
+    import: "package:object_serializer/builder.dart"
+    builder_factories: ["jsonSerializer"]
+    build_extensions: {".json.yaml": [".json.dart"]}
+    auto_apply: dependents
+    build_to: source
