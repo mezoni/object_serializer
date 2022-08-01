@@ -1,6 +1,10 @@
+# 0.3.7
+
+- Added the ability to build generic JSON serializers.
+
 # 0.3.6
 
-- Added the ability to build json serializers from files `*.json.yaml` to `*.json.dart`.
+- Added the ability to build JSON serializers from files `*.json.yaml` to `*.json.dart`.
 - The `JsonSerializerGenerator` now generates more informative error messages.
 
 # 0.3.5

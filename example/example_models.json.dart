@@ -76,6 +76,36 @@ class Baz {
   }
 }
 
+class Response<T> {
+  Response({required this.data});
+
+  factory Response.fromJson(Map json) {
+    return Response(
+      data: (x) {
+        return _Generic.deserialize<T>(x as Map);
+      }(json['data']),
+    );
+  }
+
+  final T data;
+
+  static List<Response> fromJsonList(List json) {
+    return json.map((e) => Response.fromJson(e as Map)).toList();
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'data': (x) {
+        return (data as dynamic).toJson;
+      }(data),
+    };
+  }
+
+  static List<Map<String, dynamic>> toJsonList(List<Response> list) {
+    return list.map((e) => e.toJson()).toList();
+  }
+}
+
 class _DateTimeSerializer {
   static DateTime deserialize(Object? value) {
     final json = value as String;
@@ -84,5 +114,17 @@ class _DateTimeSerializer {
 
   static Object? serialize(DateTime value) {
     return value.microsecondsSinceEpoch.toString();
+  }
+}
+
+class _Generic {
+  static T deserialize<T>(Map json) {
+    const types = {Bar: Bar.fromJson, Baz: Baz.fromJson, Foo: Foo.fromJson};
+    final fromJson = types[T];
+    if (fromJson != null) {
+      return fromJson(json) as T;
+    }
+
+    throw StateError('Unable to deserialize type $T');
   }
 }

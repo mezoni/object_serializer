@@ -9,6 +9,15 @@ classes:
     fields:
       date:
         type: DateTime
+  Response:
+    typeParameters: <T>
+    fields:
+      data:
+        type: T
+        serialize: |-
+          (x) { return (data as dynamic).toJson; }
+        deserialize: |-
+          (x) { return _Generic.deserialize<T>(x as Map); }
 
 serializers:
   DateTime:
@@ -19,3 +28,10 @@ serializers:
 
     serialize: |-
       return value.microsecondsSinceEpoch.toString();
+
+genericSerializer:
+  name: _Generic
+  types:
+    - Bar
+    - Baz
+    - Foo

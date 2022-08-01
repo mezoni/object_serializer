@@ -35,6 +35,13 @@ class JsonSerializerGenerator {
             b.extend = Reference(extend);
           }
 
+          final typeParameters =
+              classReader.tryRead<String>('$className.typeParameters', false);
+          if (typeParameters != null) {
+            final type = _parseType('$className$typeParameters');
+            b.types.addAll(type.arguments.map((e) => Reference('$e')));
+          }
+
           final fieldsData = classReader.read<Map>('$className.fields');
           for (final key in fieldsData.keys) {
             final fieldName = '$key';
@@ -207,6 +214,62 @@ class JsonSerializerGenerator {
 
         lib.body.add(enum_);
       }
+    });
+
+    final emitter = DartEmitter();
+    final result = library.accept(emitter).toString();
+    return result;
+  }
+
+  String generateGenericSerializer(Map serializer) {
+    final library = Library((lib) {
+      final serializerReader = MapReader(serializer);
+      final class_ = Class((b) {
+        final name = serializerReader.read<String>('name');
+        b.name = name;
+        final types = serializerReader.read<List>('types');
+        final typeNames = <String>{};
+        for (final element in types) {
+          final typeName = '$element';
+          final type = _parseType(typeName);
+          if (type.hasSuffix) {
+            throw StateError(
+                'Generic serializer does not support nullable types: $type');
+          }
+
+          if (type.arguments.isNotEmpty) {
+            throw StateError(
+                'Generic serializer does not support parametrized types: $type');
+          }
+
+          typeNames.add(type.name);
+        }
+
+        b.methods.add(Method((b) {
+          b.static = true;
+          b.returns = Reference('T');
+          b.name = 'deserialize';
+          b.types.add(Reference('T'));
+          b.requiredParameters.add(Parameter((b) {
+            b.name = 'json';
+            b.type = Reference('Map');
+          }));
+          const template = r'''
+const types = {{{types}}};
+final fromJson = types[T];
+if (fromJson != null) {
+  return fromJson(json) as T;
+}
+
+throw StateError('Unable to deserialize type $T');''';
+          final values = {
+            'types': typeNames.map((e) => '$e: $e.fromJson').join(',\n'),
+          };
+          b.body = Code(render(template, values));
+        }));
+      });
+
+      lib.body.add(class_);
     });
 
     final emitter = DartEmitter();
