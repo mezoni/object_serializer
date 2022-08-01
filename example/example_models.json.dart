@@ -51,15 +51,18 @@ class Bar {
 }
 
 class Baz {
-  Baz({required this.date});
+  Baz({required this.date1, required this.date2});
 
   factory Baz.fromJson(Map json) {
     return Baz(
-      date: _DateTimeSerializer.deserialize(json['date']),
+      date1: _Serializer.deserialize<DateTime>(json['date1']),
+      date2: _Serializer.deserialize<DateTime?>(json['date2']),
     );
   }
 
-  final DateTime date;
+  final DateTime date1;
+
+  final DateTime? date2;
 
   static List<Baz> fromJsonList(List json) {
     return json.map((e) => Baz.fromJson(e as Map)).toList();
@@ -67,7 +70,8 @@ class Baz {
 
   Map<String, dynamic> toJson() {
     return {
-      'date': _DateTimeSerializer.serialize(date),
+      'date1': _Serializer.serialize<DateTime>(date1),
+      'date2': _Serializer.serialize<DateTime?>(date2),
     };
   }
 
@@ -76,18 +80,16 @@ class Baz {
   }
 }
 
-class Response<T> {
-  Response({required this.data});
+class Response<T1> {
+  Response({required this.data1});
 
   factory Response.fromJson(Map json) {
     return Response(
-      data: (x) {
-        return _Generic.deserialize<T>(x as Map);
-      }(json['data']),
+      data1: _Serializer.deserialize<T1>(json['data1']),
     );
   }
 
-  final T data;
+  final T1 data1;
 
   static List<Response> fromJsonList(List json) {
     return json.map((e) => Response.fromJson(e as Map)).toList();
@@ -95,9 +97,7 @@ class Response<T> {
 
   Map<String, dynamic> toJson() {
     return {
-      'data': (x) {
-        return (data as dynamic).toJson;
-      }(data),
+      'data1': _Serializer.serialize<T1>(data1),
     };
   }
 
@@ -106,25 +106,77 @@ class Response<T> {
   }
 }
 
-class _DateTimeSerializer {
-  static DateTime deserialize(Object? value) {
-    final json = value as String;
-    return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
-  }
+class _Serializer {
+  static final Map<Type, int> _types = _generateTypes();
 
-  static Object? serialize(DateTime value) {
-    return value.microsecondsSinceEpoch.toString();
-  }
-}
-
-class _Generic {
-  static T deserialize<T>(Map json) {
-    const types = {Bar: Bar.fromJson, Baz: Baz.fromJson, Foo: Foo.fromJson};
-    final fromJson = types[T];
-    if (fromJson != null) {
-      return fromJson(json) as T;
+  static T deserialize<T>(Object? value) {
+    final id = _types[T];
+    dynamic result;
+    switch (id) {
+      case 0:
+        result = value == null ? null : Bar.fromJson(value as Map);
+        break;
+      case 1:
+        result = value == null ? null : Baz.fromJson(value as Map);
+        break;
+      case 2:
+        result = value == null ? null : Foo.fromJson(value as Map);
+        break;
+      case 3:
+        result = value == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(int.parse(value as String));
+        break;
+      default:
+        throw StateError('Unable to deserialize type $T');
     }
 
-    throw StateError('Unable to deserialize type $T');
+    if (result is T) {
+      return result;
+    }
+
+    throw StateError("Unable to cast '${result.runtimeType}' value to type $T");
+  }
+
+  static Object? serialize<T>(T value) {
+    final id = _types[T];
+    Object? result;
+    switch (id) {
+      case 0:
+        result = value == null ? null : (value as Bar).toJson();
+        break;
+      case 1:
+        result = value == null ? null : (value as Baz).toJson();
+        break;
+      case 2:
+        result = value == null ? null : (value as Foo).toJson();
+        break;
+      case 3:
+        result = value == null
+            ? null
+            : (value as DateTime).microsecondsSinceEpoch.toString();
+        break;
+      default:
+        throw StateError('Unable to serialize type $T');
+    }
+
+    return result;
+  }
+
+  static Map<Type, int> _generateTypes() {
+    final result = <Type, int>{};
+    void addType<T>(int id) {
+      result[T] = id;
+    }
+
+    addType<Bar>(0);
+    addType<Bar?>(0);
+    addType<Baz>(1);
+    addType<Baz?>(1);
+    addType<Foo>(2);
+    addType<Foo?>(2);
+    addType<DateTime>(3);
+    addType<DateTime?>(3);
+    return result;
   }
 }

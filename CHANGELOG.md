@@ -1,3 +1,7 @@
+# 0.4.0
+
+- Breaking change: The `JsonSerializerGenerator` now generates a generic (all-in-one) serializer for all specified types. This greatly simplifies its use.
+
 # 0.3.7
 
 - Added the ability to build generic JSON serializers.

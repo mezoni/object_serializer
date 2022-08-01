@@ -7,31 +7,37 @@ classes:
       baz: Baz
   Baz:
     fields:
-      date:
+      date1:
         type: DateTime
-  Response:
-    typeParameters: <T>
-    fields:
-      data:
-        type: T
-        serialize: |-
-          (x) { return (data as dynamic).toJson; }
         deserialize: |-
-          (x) { return _Generic.deserialize<T>(x as Map); }
+          _Serializer.deserialize<DateTime>
+        serialize:
+          _Serializer.serialize<DateTime>
+      date2:
+        type: DateTime?
+        deserialize: |-
+          _Serializer.deserialize<DateTime?>
+        serialize: |-
+          _Serializer.serialize<DateTime?>
+
+  Response:
+    typeParameters: <T1>
+    fields:
+      data1:
+        type: T1
+        deserialize: |-
+          _Serializer.deserialize<T1>
+        serialize:
+          _Serializer.serialize<T1>
 
 serializers:
-  DateTime:
-    type: _DateTimeSerializer
-    deserialize: |-
-      final json = value as String;
-      return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
-
-    serialize: |-
-      return value.microsecondsSinceEpoch.toString();
-
-genericSerializer:
-  name: _Generic
-  types:
-    - Bar
-    - Baz
-    - Foo
+  _Serializer:
+    types:
+      Bar:
+      Baz:
+      Foo:
+      DateTime:
+        deserialize: |-
+          result = value == null ? null : DateTime.fromMicrosecondsSinceEpoch(int.parse(value as String));
+        serialize: |-
+          result = value == null ? null : (value as DateTime).microsecondsSinceEpoch.toString();

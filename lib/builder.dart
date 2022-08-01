@@ -15,10 +15,7 @@ class JsonSerializerLibraryGenerator extends Builder {
 
 {{classes}}
 
-{{serializers}}
-
-{{generic_serializer}}
-''';
+{{serializers}}''';
 
   @override
   Map<String, List<String>> get buildExtensions => const {
@@ -49,11 +46,6 @@ class JsonSerializerLibraryGenerator extends Builder {
       serializers = _getValue<Map>(yaml, 'serializers');
     }
 
-    var genericSerializer = {};
-    if (yaml.containsKey('genericSerializer')) {
-      genericSerializer = _getValue<Map>(yaml, 'genericSerializer');
-    }
-
     final g = JsonSerializerGenerator();
     var classesCode = '';
     if (classes.isNotEmpty) {
@@ -70,13 +62,6 @@ class JsonSerializerLibraryGenerator extends Builder {
       );
     }
 
-    var genericSerializerCode = '';
-    if (genericSerializer.isNotEmpty) {
-      genericSerializerCode = g.generateGenericSerializer(
-        genericSerializer,
-      );
-    }
-
     var directivesCode = '';
     if (directives.isNotEmpty) {
       directivesCode = directives.join('\n');
@@ -85,7 +70,6 @@ class JsonSerializerLibraryGenerator extends Builder {
     final values = {
       'classes': classesCode,
       'directives': directivesCode,
-      'generic_serializer': genericSerializerCode,
       'serializers': serializersCode,
     };
     var result = g.render(_template, values);

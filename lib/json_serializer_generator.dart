@@ -221,55 +221,155 @@ class JsonSerializerGenerator {
     return result;
   }
 
-  String generateGenericSerializer(Map serializer) {
-    final library = Library((lib) {
-      final serializerReader = MapReader(serializer);
-      final class_ = Class((b) {
-        final name = serializerReader.read<String>('name');
-        b.name = name;
-        final types = serializerReader.read<List>('types');
-        final typeNames = <String>{};
-        for (final element in types) {
-          final typeName = '$element';
-          final type = _parseType(typeName);
-          if (type.hasSuffix) {
-            throw StateError(
-                'Generic serializer does not support nullable types: $type');
-          }
-
-          if (type.arguments.isNotEmpty) {
-            throw StateError(
-                'Generic serializer does not support parametrized types: $type');
-          }
-
-          typeNames.add(type.name);
-        }
-
-        b.methods.add(Method((b) {
-          b.static = true;
-          b.returns = Reference('T');
-          b.name = 'deserialize';
-          b.types.add(Reference('T'));
-          b.requiredParameters.add(Parameter((b) {
-            b.name = 'json';
-            b.type = Reference('Map');
+  String generateSerializers(Map serializers) {
+    final library = Library((b) {
+      final serializerReader = MapReader(serializers);
+      for (final key in serializers.keys) {
+        final class_ = Class((b) {
+          final className = '$key';
+          b.name = className;
+          b.fields.add(Field((b) {
+            b.static = true;
+            b.type = Reference('Map<Type, int>');
+            b.name = '_types';
+            b.modifier = FieldModifier.final$;
+            b.assignment = Code('_generateTypes()');
           }));
-          const template = r'''
-const types = {{{types}}};
-final fromJson = types[T];
-if (fromJson != null) {
-  return fromJson(json) as T;
+
+          b.methods.add(Method((b) {
+            b.static = true;
+            b.returns = Reference('T');
+            b.name = 'deserialize';
+            b.types.add(Reference('T'));
+            b.requiredParameters.add(Parameter((b) {
+              b.name = 'value';
+              b.type = Reference('Object?');
+            }));
+            final types = serializerReader.read<Map>('$className.types');
+            final cases = <String>[];
+            final keys = types.keys.toList();
+            for (var i = 0; i < keys.length; i++) {
+              final key = keys[i];
+              final typeName = '$key';
+              cases.add('case $i:');
+              final deserialize = serializerReader.tryRead<String>(
+                  '$className.types.$typeName.deserialize', false);
+              if (deserialize == null) {
+                cases.add(
+                    'result = value == null ? null : $typeName.fromJson(value as Map);');
+              } else {
+                cases.add(deserialize);
+              }
+
+              cases.add('break;');
+            }
+
+            const template = r'''
+final id = _types[T];
+dynamic result;
+switch (id) {
+  {{cases}}
+  default:
+    throw StateError('Unable to deserialize type $T');
 }
 
-throw StateError('Unable to deserialize type $T');''';
-          final values = {
-            'types': typeNames.map((e) => '$e: $e.fromJson').join(',\n'),
-          };
-          b.body = Code(render(template, values));
-        }));
-      });
+if (result is T) {
+  return result;
+}
 
-      lib.body.add(class_);
+throw StateError("Unable to cast '${result.runtimeType}' value to type $T");''';
+            final values = {
+              'cases': cases.join('\n'),
+            };
+            b.body = Code(render(template, values));
+          }));
+
+          b.methods.add(Method((b) {
+            b.static = true;
+            b.returns = Reference('Object?');
+            b.name = 'serialize';
+            b.types.add(Reference('T'));
+            b.requiredParameters.add(Parameter((b) {
+              b.name = 'value';
+              b.type = Reference('T');
+            }));
+            final types = serializerReader.read<Map>('$className.types');
+            final cases = <String>[];
+            final keys = types.keys.toList();
+            for (var i = 0; i < keys.length; i++) {
+              final key = keys[i];
+              final typeName = '$key';
+              cases.add('case $i:');
+              final serialize = serializerReader.tryRead<String>(
+                  '$className.types.$typeName.serialize', false);
+              if (serialize == null) {
+                cases.add(
+                    'result = value == null ? null : (value as $typeName).toJson();');
+              } else {
+                cases.add(serialize);
+              }
+
+              cases.add('break;');
+            }
+
+            const template = r'''
+final id = _types[T];
+Object? result;
+switch (id) {
+  {{cases}}
+  default:
+    throw StateError('Unable to serialize type $T');
+}
+
+return result;''';
+            final values = {
+              'cases': cases.join('\n'),
+            };
+            b.body = Code(render(template, values));
+          }));
+          b.methods.add(Method((b) {
+            b.static = true;
+            b.name = '_generateTypes';
+            b.returns = Reference('Map<Type, int>');
+            final code = <String>[];
+            final types = serializerReader.read<Map>('$className.types');
+            final keys = types.keys.toList();
+            for (var i = 0; i < keys.length; i++) {
+              final key = keys[i];
+              final typeName = '$key';
+              final type = _parseType(typeName);
+              if (type.hasSuffix) {
+                throw StateError(
+                    "The serializer requires the type '$type' to be specified without a suffix ($className.types.$key)");
+              }
+
+              if (type.arguments.isNotEmpty) {
+                throw StateError(
+                    "The serializer does not support the type '$type' with type parameters ($className.types.$key)");
+              }
+
+              code.add('addType<$typeName>($i);');
+              code.add('addType<$typeName?>($i);');
+            }
+
+            const template = r'''
+final result = <Type, int>{};
+void addType<T>(int id) {
+  result[T] = id;
+}
+
+{{code}}
+return result;''';
+
+            final values = {
+              'code': code.join('\n'),
+            };
+            b.body = Code(render(template, values));
+          }));
+        });
+
+        b.body.add(class_);
+      }
     });
 
     final emitter = DartEmitter();
@@ -277,7 +377,7 @@ throw StateError('Unable to deserialize type $T');''';
     return result;
   }
 
-  String generateSerializers(Map serializers) {
+  String generateSerializers_(Map serializers) {
     final library = Library((b) {
       for (final key in serializers.keys) {
         final class_ = Class((b) {

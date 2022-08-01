@@ -12,22 +12,24 @@ class MapReader {
     var map = this.map;
     for (var i = 0; i < keys.length; i++) {
       final key = keys[i];
-      if (map.containsKey(key)) {
-        final value = map[key];
-        if (i == keys.length - 1) {
-          if (value is T) {
-            return value;
-          }
+      if (!map.containsKey(key)) {
+        break;
+      }
 
-          throw StateError(
-              "Expected '$T' value but got ${value.runtimeType}: $path");
+      final value = map[key];
+      if (i == keys.length - 1) {
+        if (value is T) {
+          return value;
         }
 
-        if (value is Map) {
-          map = value;
-        } else {
-          break;
-        }
+        throw StateError(
+            "Expected '$T' value but got ${value.runtimeType}: $path");
+      }
+
+      if (value is Map) {
+        map = value;
+      } else {
+        break;
       }
     }
 
@@ -43,21 +45,23 @@ class MapReader {
     var map = this.map;
     for (var i = 0; i < keys.length; i++) {
       final key = keys[i];
-      if (map.containsKey(key)) {
-        final value = map[key];
-        if (i == keys.length - 1) {
-          if (value is T) {
-            return value;
-          }
+      if (!map.containsKey(key)) {
+        break;
+      }
 
-          return null;
+      final value = map[key];
+      if (i == keys.length - 1) {
+        if (value is T) {
+          return value;
         }
 
-        if (value is Map) {
-          map = value;
-        } else {
-          break;
-        }
+        return null;
+      }
+
+      if (value is Map) {
+        map = value;
+      } else {
+        break;
       }
     }
 

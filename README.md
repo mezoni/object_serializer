@@ -2,7 +2,7 @@
 
 A collection of serializers for serializing data in a variety of ways (JSON, Generic Objects).
 
-Version: 0.3.7
+Version: 0.4.0
 
 Two kinds of data serializers are currently available:  
 - JSON serializer
@@ -20,7 +20,8 @@ Implementing an object serializer is also very simple. To do this, you need to w
 ## JSON serializer
 
 `JSON serializer` is a serializer to standard JSON format.  
-Let's say that we need to use this data objects to exchange data in JSON format.
+Let's say that we need to use this data objects to exchange data in JSON format.  
+As you can see, we need a generic serializer.
 
 ```yaml
 classes:
@@ -32,18 +33,45 @@ classes:
       baz: Baz
   Baz:
     fields:
-      date:
+      date1:
         type: DateTime
+        deserialize: |-
+          _Serializer.deserialize<DateTime>
+        serialize:
+          _Serializer.serialize<DateTime>
+       date2:
+        type: DateTime?
+        deserializer: _Serializer
+        serializer: _Serializer
+
+  Response:
+    typeParameters: <T1, T2, T3>
+    fields:
+      data1:
+        type: T1
+        deserialize: |-
+          _Serializer.deserialize<T>
+        serialize:
+          _Serializer.serialize<T>
+      data2:
+        type: T2?
+        deserializer: _Serializer
+        serializer: _Serializer
+      data3:
+        type: T3
+        serialization: _Serializer
 
 serializers:
-  DateTime:
-    type: _DateTimeSerializer
-    deserialize: |-
-      final json = value as String;
-      return DateTime.fromMicrosecondsSinceEpoch(int.parse(json));
-
-    serialize: |-
-      return value.microsecondsSinceEpoch.toString();
+  _Serializer:
+    types:
+      Bar:
+      Baz:
+      Foo:
+      DateTime:
+        deserialize: |-
+          result = DateTime.fromMicrosecondsSinceEpoch(int.parse(value as String));
+        serialize: |-
+          result = (value as DateTime).microsecondsSinceEpoch.toString();
 
 ```
 
