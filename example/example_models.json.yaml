@@ -7,37 +7,21 @@ classes:
       baz: Baz
   Baz:
     fields:
-      date1:
-        type: DateTime
-        deserialize: |-
-          _Serializer.deserialize<DateTime>
-        serialize:
-          _Serializer.serialize<DateTime>
-      date2:
-        type: DateTime?
-        deserialize: |-
-          _Serializer.deserialize<DateTime?>
-        serialize: |-
-          _Serializer.serialize<DateTime?>
-
-  Response:
-    typeParameters: <T1>
-    fields:
-      data1:
-        type: T1
-        deserialize: |-
-          _Serializer.deserialize<T1>
-        serialize:
-          _Serializer.serialize<T1>
+      date1: DateTime
+      date2: DateTime?
+      list: List<List<List<BigInt>>>
 
 serializers:
-  _Serializer:
-    types:
-      Bar:
-      Baz:
-      Foo:
-      DateTime:
-        deserialize: |-
-          result = value == null ? null : DateTime.fromMicrosecondsSinceEpoch(int.parse(value as String));
-        serialize: |-
-          result = value == null ? null : (value as DateTime).microsecondsSinceEpoch.toString();
+  _BigIntSerializer:
+    type: BigInt
+    defaultValue: "BigInt.from(0)"
+    deserialize: |-
+      return BigInt.parse(value as String);
+    serialize: |-
+      return value.toString();
+  _DateTimeSerializer:
+    type: DateTime
+    deserialize: |-
+      return DateTime.fromMicrosecondsSinceEpoch(int.parse(value as String));
+    serialize: |-
+      return value.microsecondsSinceEpoch.toString();

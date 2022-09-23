@@ -22,9 +22,9 @@ class JsonSerializerGenerator {
     void Function(ClassBuilder builder, Map classData)? build,
     Map serializers = const {},
   }) {
-    final classReader = MapReader(classes);
-    final serializerReader = MapReader(serializers);
     final library = Library((b) {
+      final classReader = MapReader(classes);
+      final serializerReader = MapReader(serializers);
       for (final key in classes.keys) {
         final class_ = Class((b) {
           final className = '$key';
@@ -35,13 +35,9 @@ class JsonSerializerGenerator {
             b.extend = Reference(extend);
           }
 
-          final typeParameters =
-              classReader.tryRead<String>('$className.typeParameters', false);
-          if (typeParameters != null) {
-            final type = _parseType('$className$typeParameters');
-            b.types.addAll(type.arguments.map((e) => Reference('$e')));
-          }
-
+          final typeInfo = _parseType(className);
+          _checkTypeHasNoArguments(typeInfo, 'classes.$className');
+          _checkTypeHasNoSuffix(typeInfo, 'classes.$className');
           final fieldsData = classReader.read<Map>('$className.fields');
           for (final key in fieldsData.keys) {
             final fieldName = '$key';
@@ -91,7 +87,7 @@ class JsonSerializerGenerator {
             for (final key in fieldsData.keys) {
               final fieldName = '$key';
               var alias = fieldName;
-              String? deserialize;
+              String? serializer;
               var type = classReader.tryRead<String>(
                   '$className.fields.$fieldName', false);
               if (type == null) {
@@ -101,14 +97,14 @@ class JsonSerializerGenerator {
                             '$className.fields.$fieldName.alias', false) ??
                         fieldName)
                     .trim();
-                deserialize = classReader.tryRead(
-                    '$className.fields.$fieldName.deserialize', false);
+                serializer = classReader.tryRead(
+                    '$className.fields.$fieldName.serializer', false);
               }
 
               final typeInfo = _parseType(type);
               var value = "json['$alias']";
-              if (deserialize != null) {
-                value = '$deserialize($value)';
+              if (serializer != null) {
+                value = '$serializer.serialize($value)';
               } else {
                 value = _deserialize(typeInfo, value, serializerReader);
               }
@@ -143,7 +139,7 @@ class JsonSerializerGenerator {
             for (final key in fieldsData.keys) {
               final fieldName = '$key';
               var alias = fieldName;
-              String? serialize;
+              String? serializer;
               var type = classReader.tryRead<String>(
                   '$className.fields.$fieldName', false);
               if (type == null) {
@@ -153,14 +149,14 @@ class JsonSerializerGenerator {
                             '$className.fields.$fieldName.alias', false) ??
                         fieldName)
                     .trim();
-                serialize = classReader.tryRead(
-                    '$className.fields.$fieldName.serialize', false);
+                serializer = classReader.tryRead(
+                    '$className.fields.$fieldName.serializer', false);
               }
 
               final typeInfo = _parseType(type);
               var value = fieldName;
-              if (serialize != null) {
-                value = '$serialize($value)';
+              if (serializer != null) {
+                value = '$serializer.serialize($value)';
               } else {
                 value = _serialize(typeInfo, value, serializerReader);
               }
@@ -227,185 +223,47 @@ class JsonSerializerGenerator {
       for (final key in serializers.keys) {
         final class_ = Class((b) {
           final className = '$key';
+          final classType = _parseType(className);
+          _checkTypeHasNoSuffix(classType, className);
+          _checkTypeHasNoArguments(classType, className);
+          final typeName = serializerReader.read<String>('$className.type');
+          final type = _parseType(typeName);
+          _checkTypeHasNoSuffix(type, '$className.type');
+          _checkTypeHasOnlySimpleArguments(type, '$className.type');
+          final typeArguments = type.arguments;
           b.name = className;
-          b.fields.add(Field((b) {
-            b.static = true;
-            b.type = Reference('Map<Type, int>');
-            b.name = '_types';
-            b.modifier = FieldModifier.final$;
-            b.assignment = Code('_generateTypes()');
+          b.constructors.add(Constructor((b) {
+            b.constant = true;
           }));
 
           b.methods.add(Method((b) {
-            b.static = true;
-            b.returns = Reference('T');
+            b.returns = Reference(typeName);
             b.name = 'deserialize';
-            b.types.add(Reference('T'));
-            b.requiredParameters.add(Parameter((b) {
-              b.name = 'value';
-              b.type = Reference('Object?');
-            }));
-            final types = serializerReader.read<Map>('$className.types');
-            final cases = <String>[];
-            final keys = types.keys.toList();
-            for (var i = 0; i < keys.length; i++) {
-              final key = keys[i];
-              final typeName = '$key';
-              cases.add('case $i:');
-              final deserialize = serializerReader.tryRead<String>(
-                  '$className.types.$typeName.deserialize', false);
-              if (deserialize == null) {
-                cases.add(
-                    'result = value == null ? null : $typeName.fromJson(value as Map);');
-              } else {
-                cases.add(deserialize);
-              }
-
-              cases.add('break;');
+            if (typeArguments.isNotEmpty) {
+              b.types.addAll(typeArguments.map((e) => Reference(e.name)));
             }
 
-            const template = r'''
-final id = _types[T];
-dynamic result;
-switch (id) {
-  {{cases}}
-  default:
-    throw StateError('Unable to deserialize type $T');
-}
-
-if (result is T) {
-  return result;
-}
-
-throw StateError("Unable to cast '${result.runtimeType}' value to type $T");''';
-            final values = {
-              'cases': cases.join('\n'),
-            };
-            b.body = Code(render(template, values));
-          }));
-
-          b.methods.add(Method((b) {
-            b.static = true;
-            b.returns = Reference('Object?');
-            b.name = 'serialize';
-            b.types.add(Reference('T'));
             b.requiredParameters.add(Parameter((b) {
               b.name = 'value';
-              b.type = Reference('T');
+              b.type = Reference('Object');
             }));
-            final types = serializerReader.read<Map>('$className.types');
-            final cases = <String>[];
-            final keys = types.keys.toList();
-            for (var i = 0; i < keys.length; i++) {
-              final key = keys[i];
-              final typeName = '$key';
-              cases.add('case $i:');
-              final serialize = serializerReader.tryRead<String>(
-                  '$className.types.$typeName.serialize', false);
-              if (serialize == null) {
-                cases.add(
-                    'result = value == null ? null : (value as $typeName).toJson();');
-              } else {
-                cases.add(serialize);
-              }
-
-              cases.add('break;');
-            }
-
-            const template = r'''
-final id = _types[T];
-Object? result;
-switch (id) {
-  {{cases}}
-  default:
-    throw StateError('Unable to serialize type $T');
-}
-
-return result;''';
-            final values = {
-              'cases': cases.join('\n'),
-            };
-            b.body = Code(render(template, values));
-          }));
-          b.methods.add(Method((b) {
-            b.static = true;
-            b.name = '_generateTypes';
-            b.returns = Reference('Map<Type, int>');
-            final code = <String>[];
-            final types = serializerReader.read<Map>('$className.types');
-            final keys = types.keys.toList();
-            for (var i = 0; i < keys.length; i++) {
-              final key = keys[i];
-              final typeName = '$key';
-              final type = _parseType(typeName);
-              if (type.hasSuffix) {
-                throw StateError(
-                    "The serializer requires the type '$type' to be specified without a suffix ($className.types.$key)");
-              }
-
-              if (type.arguments.isNotEmpty) {
-                throw StateError(
-                    "The serializer does not support the type '$type' with type parameters ($className.types.$key)");
-              }
-
-              code.add('addType<$typeName>($i);');
-              code.add('addType<$typeName?>($i);');
-            }
-
-            const template = r'''
-final result = <Type, int>{};
-void addType<T>(int id) {
-  result[T] = id;
-}
-
-{{code}}
-return result;''';
-
-            final values = {
-              'code': code.join('\n'),
-            };
-            b.body = Code(render(template, values));
-          }));
-        });
-
-        b.body.add(class_);
-      }
-    });
-
-    final emitter = DartEmitter();
-    final result = library.accept(emitter).toString();
-    return result;
-  }
-
-  String generateSerializers_(Map serializers) {
-    final library = Library((b) {
-      for (final key in serializers.keys) {
-        final class_ = Class((b) {
-          final typeName = '$key';
-          final reader = MapReader(serializers);
-          final className = reader.read<String>('$typeName.type');
-          b.name = className;
-          b.methods.add(Method((b) {
-            b.static = true;
-            b.name = 'deserialize';
-            b.returns = Reference('$key');
-            b.requiredParameters.add(Parameter((b) {
-              b.name = 'value';
-              b.type = Reference('Object?');
-            }));
-            final body = reader.read<String>('$typeName.deserialize');
+            final body =
+                serializerReader.read<String>('$className.deserialize');
             b.body = Code(body);
           }));
 
           b.methods.add(Method((b) {
-            b.static = true;
+            b.returns = Reference('Object');
             b.name = 'serialize';
-            b.returns = Reference('Object?');
+            if (typeArguments.isNotEmpty) {
+              b.types.addAll(typeArguments.map((e) => Reference(e.name)));
+            }
+
             b.requiredParameters.add(Parameter((b) {
               b.name = 'value';
-              b.type = Reference('$key');
+              b.type = Reference(typeName);
             }));
-            final body = reader.read<String>('$typeName.serialize');
+            final body = serializerReader.read<String>('$className.serialize');
             b.body = Code(body);
           }));
         });
@@ -426,6 +284,31 @@ return result;''';
     }
 
     return template;
+  }
+
+  void _checkTypeHasNoArguments(TypeInfo type, String path) {
+    final arguments = type.arguments;
+    if (arguments.isNotEmpty) {
+      throw StateError(
+          "Type '$type' must be specified without arguments: $path");
+    }
+  }
+
+  void _checkTypeHasNoSuffix(TypeInfo type, String path) {
+    if (type.hasSuffix) {
+      throw StateError("Type '$type' must be specified without suffix: $path");
+    }
+  }
+
+  void _checkTypeHasOnlySimpleArguments(TypeInfo type, String path) {
+    final typeArguments = type.arguments;
+    if (typeArguments.isEmpty) {
+      return;
+    }
+
+    if (typeArguments.any((e) => e.arguments.isNotEmpty)) {
+      throw StateError("Type '$type' not have complex arguments: $path");
+    }
   }
 
   String _deserialize(TypeInfo typeInfo, String value, MapReader serializers) {
@@ -489,10 +372,10 @@ return result;''';
         break;
       default:
         if (typeArguments.isEmpty) {
-          final name = typeInfo.name;
-          final serializer = serializers.tryRead(name, false);
+          final serializer =
+              _findSerializer(typeInfo, serializers: serializers);
           if (serializer != null) {
-            return _deserializeWith(typeInfo, value, serializers);
+            return _deserializeWith(typeInfo, value, serializer);
           }
 
           return _deserializeObject(typeInfo, value);
@@ -508,7 +391,8 @@ return result;''';
     final elementType = typeArguments[0];
     final serializeElement = _deserialize(elementType, 'e', serializers);
     final code = <String>[];
-    final defaultValue = _isNullableType(typeInfo) ? 'null' : '[]';
+    final defaultValue =
+        _isNullableType(typeInfo) ? 'null' : '<$elementType>[]';
     code.add(
         '$value == null ? $defaultValue : ($value as List).map((e) => $serializeElement).toList()');
     return code.join('\n');
@@ -539,18 +423,37 @@ return result;''';
   }
 
   String _deserializeWith(
-      TypeInfo typeInfo, String value, MapReader serializers) {
-    final name = typeInfo.name;
-    final serializerTypeName = serializers.read<String>('$name.type');
+      TypeInfo typeInfo, String value, String serializerName) {
     final code = <String>[];
     if (_isNullableType(typeInfo)) {
       code.add(
-          '$value == null ? null: $serializerTypeName.deserialize($value)');
+          '$value == null ? null: $serializerName().deserialize($value as Object)');
     } else {
-      code.add('$serializerTypeName.deserialize($value)');
+      code.add('$serializerName().deserialize($value as Object)');
     }
 
     return code.join('\n');
+  }
+
+  String? _findSerializer(
+    TypeInfo typeInfo, {
+    required MapReader serializers,
+  }) {
+    final map = serializers.map;
+    final typeName = '$typeInfo';
+    for (final key in map.keys) {
+      final serializerName = '$key';
+      final typeName2 =
+          serializers.tryRead<String>('$serializerName.type', false);
+      if (typeName2 != null) {
+        final typeInfo2 = _parseType(typeName2);
+        if (typeName == '$typeInfo2') {
+          return serializerName;
+        }
+      }
+    }
+
+    return null;
   }
 
   bool _isNullableType(TypeInfo typeInfo) {
@@ -613,10 +516,10 @@ return result;''';
         break;
       default:
         if (typeArguments.isEmpty) {
-          final name = typeInfo.name;
-          final serializer = serializers.tryRead(name, false);
+          final serializer =
+              _findSerializer(typeInfo, serializers: serializers);
           if (serializer != null) {
-            return _serializeWith(typeInfo, value, serializers);
+            return _serializeWith(typeInfo, value, serializer);
           }
 
           return _serializeObject(typeInfo, value);
@@ -665,15 +568,14 @@ return result;''';
   }
 
   String _serializeWith(
-      TypeInfo typeInfo, String value, MapReader serializers) {
+      TypeInfo typeInfo, String value, String serializerName) {
     final name = typeInfo.name;
-    final serializerTypeName = serializers.read<String>('$name.type');
     final code = <String>[];
     if (_isNullableType(typeInfo)) {
       code.add(
-          '$value == null ? null : $serializerTypeName.serialize($value as $name)');
+          '$value == null ? null : $serializerName().serialize($value as $name)');
     } else {
-      code.add('$serializerTypeName.serialize($value)');
+      code.add('$serializerName().serialize($value)');
     }
 
     return code.join('\n');

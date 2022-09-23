@@ -36,7 +36,8 @@
             "request": "launch",
             "program": ".dart_tool/build/entrypoint/build.dart",
             "args": [
-                "build"
+                "build",
+                "--delete-conflicting-outputs"
             ]
         }
     ]
